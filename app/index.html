@@ -182,6 +182,61 @@ tr.click:hover td{background:#FAF8FF}
   .opt.emo{font-size:3.2em}
   .prompt .phrase{font-size:1.8em}
 }
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tw table{min-width:36em}
+.settings-opt{display:flex;gap:.8em;align-items:flex-start;padding:.8em;border:2px solid var(--line);border-radius:14px;cursor:pointer;margin-bottom:.6em;font-weight:400}
+.settings-opt input{width:1.3em;height:1.3em;margin-top:.15em;flex:none}
+.settings-opt b{display:block}
+.settings-opt.on{border-color:var(--primary);background:#FAF8FF}
+
+/* Móvil en vertical */
+@media (max-width:600px){
+  body{font-size:calc(15px * var(--scale))}
+  .top{padding:.5em .7em;min-height:3.4em;gap:.5em}
+  .top h1{font-size:1.15em}
+  .top .who{font-size:.95em}
+  .iconbtn{width:2.6em;height:2.6em;font-size:1.05em}
+  .main{padding:0 .7em .8em}
+  .hero{margin:.3em 0 .8em} .hero h2{font-size:1.45em}
+  .grid{grid-template-columns:repeat(2,1fr);gap:.7em}
+  .tile{min-height:6.5em;padding:.8em .5em;border-radius:18px}
+  .tile .big{font-size:2.4em}
+  .group-tile{min-height:7em;font-size:1.1em}
+  .menu{grid-template-columns:1fr 1fr;gap:.8em}
+  .menu .tile{min-height:9em;font-size:1.3em}
+  .abc{grid-template-columns:repeat(5,1fr);gap:.45em}
+  .abc .tile{min-height:3.8em;padding:.2em;border-width:3px}
+  .abc .tile .big{font-size:2em}
+  .abc .star{font-size:.7em}
+  .prompt{min-height:6.5em;padding:.8em;margin-bottom:.9em}
+  .prompt .emoji{font-size:4em}
+  .prompt .phrase{font-size:1.5em}
+  .speak{width:3.4em;height:3.4em;font-size:1.2em}
+  .options{gap:.5em}
+  .opt{min-height:4.6em;font-size:2em;border-width:4px}
+  .opt.emo{font-size:2.7em}
+  .trace-wrap{flex-direction:column;gap:.6em}
+  .trace-side{flex-direction:column;flex-wrap:nowrap;gap:.5em;width:auto}
+  .trace-side .side-card{flex:none;display:flex;align-items:center;justify-content:center;gap:.6em;padding:.4em .8em}
+  .trace-side .side-card .emoji{font-size:2.4em}
+  .trace-side .side-card .word{font-size:1.4em}
+  .trace-side .tools{flex-direction:row;flex-wrap:wrap;gap:.45em;flex:none}
+  .trace-side .tools .btn{flex:1 1 28%;padding:.65em .3em;font-size:.9em;white-space:nowrap}
+  .trace-side .tools .side-card{flex:1 1 100%;display:block;padding:.45em .7em}
+  .trace-side > .side-card{flex:none}
+  .tools .side-card .hint{margin-top:.25em !important;font-size:.85em}
+  .trace-board{min-height:42vh}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;padding:0 .7em .2em;-webkit-overflow-scrolling:touch}
+  .tabs button{white-space:nowrap;padding:.5em .9em}
+  .panel{padding:.8em;border-radius:14px}
+  .list-item{flex-wrap:wrap}
+  .list-item .grow{min-width:60%}
+  .modal{padding:1em}
+  .keypad{grid-template-columns:repeat(3,4em)}
+  .keypad button{height:4em}
+  .two{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){ .celebrate{display:none} .opt.bad{animation:none} }
 </style>
 </head>
 <body>
@@ -262,9 +317,9 @@ const ROUND = 6;
    DATOS (se guardan en este equipo)
    ========================================================= */
 const LS_KEY = "lectoescritura.v1";
-function blankDB(){return {version:1,teachers:[],groups:[],students:[],records:[]}}
+function blankDB(){return {version:1,teachers:[],groups:[],students:[],records:[],settings:{celebration:"confeti",praise:true}}}
 function loadDB(){
-  try{const s=localStorage.getItem(LS_KEY); if(s){const d=JSON.parse(s); return Object.assign(blankDB(),d);}}catch(e){}
+  try{const s=localStorage.getItem(LS_KEY); if(s){const d=JSON.parse(s); const b=blankDB(); const r=Object.assign(b,d); r.settings=Object.assign(blankDB().settings,d.settings||{}); return r;}}catch(e){}
   return blankDB();
 }
 let DB = loadDB();
@@ -344,9 +399,13 @@ function confirmBox(text, okLabel, onOk){
   modal(`<h3>${esc(text)}</h3><div class="row end"><button class="btn" data-x>Cancelar</button><button class="btn danger" data-ok>${esc(okLabel)}</button></div>`,
     (m,close)=>{ m.querySelector("[data-x]").onclick=close; m.querySelector("[data-ok]").onclick=()=>{close();onOk();}; });
 }
+function praise(list){ if(DB.settings.praise!==false) say(pick(list)); }
 function celebrate(){
-  const st = student();
-  if(st && st.helps && st.helps.calma){
+  const st = (S.studentId||S.demo) ? student() : null;
+  const mode = DB.settings.celebration||"confeti";
+  if(mode==="nada") return;
+  const reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(mode==="check" || reduced || (st && st.helps && st.helps.calma)){
     const d=document.createElement("div"); d.className="bigcheck"; d.innerHTML="<div>✓</div>"; document.body.appendChild(d);
     setTimeout(()=>d.remove(),1300); return;
   }
@@ -484,7 +543,7 @@ function startReading(){
       if(o===it){
         locked=true; b.classList.add("ok"); if(tries===1) firstTry++;
         record("lectura",lvl,it.key,tries,tries===1?100:Math.max(0,100-50*(tries-1)),performance.now()-t0);
-        celebrate(); say(pick(["¡Muy bien!","¡Genial!","¡Eso es!","¡Fenomenal!"]));
+        celebrate(); praise(["¡Muy bien!","¡Genial!","¡Eso es!","¡Fenomenal!"]);
         setTimeout(()=>{idx++;next();},1500);
       }else{
         b.classList.remove("bad"); void b.offsetWidth; b.classList.add("bad");
@@ -499,7 +558,7 @@ function startReading(){
 function roundEnd(area,good,total,again){
   const st=student();
   const stars = good===total?3 : good>=total*.6?2 : 1;
-  celebrate(); say(`¡Muy bien, ${st.name}!`);
+  celebrate(); praise([`¡Muy bien, ${st.name}!`]);
   h(`${topBar(area==="lectura"?"👀 Leer":"✏️ Escribir", true)}
   <div class="main center">
     <div class="hero"><div style="font-size:5em">${"⭐".repeat(stars)}${"☆".repeat(3-stars)}</div>
@@ -681,7 +740,7 @@ function traceScreen(o){
   function success(r){
     finished=true; redrawInk();
     record("escritura",st.cfg.escritura,o.text,tries+1,r.acc,performance.now()-t0);
-    celebrate(); say(pick(["¡Muy bien!","¡Qué bonita te ha quedado!","¡Genial!","¡Perfecto!"]));
+    celebrate(); praise(["¡Muy bien!","¡Qué bonita te ha quedado!","¡Genial!","¡Perfecto!"]);
     msg.innerHTML="¡Conseguido! 🎉";
     const tools=app.querySelector(".tools");
     const nb=document.createElement("button"); nb.className="btn primary"; nb.style.fontSize="1.15em";
@@ -780,6 +839,7 @@ function teacherPanel(){
   const t=me(); if(!t) return screenGroups();
   document.body.classList.remove("grande");
   const tabs=[["grupos","🏫 Clases"],["alumnos","🧒 Alumnado"],["progreso","📈 Progreso"],["copias","💾 Copias"]];
+  tabs.push(["ajustes","🔧 Ajustes"]);
   if(t.admin) tabs.push(["docentes","👩‍🏫 Docentes"]);
   h(`<div class="teacher" style="height:100%;display:flex;flex-direction:column">
     <div class="top"><h1>⚙️ Panel docente</h1><div class="who">👩‍🏫 ${esc(t.name)}</div><button class="btn" data-out>Salir</button></div>
@@ -788,7 +848,7 @@ function teacherPanel(){
   app.querySelector("[data-out]").onclick=()=>{S.teacherId=null;screenGroups();};
   app.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{S.tTab=b.dataset.tab; S.tStudent=null; teacherPanel();});
   const body=app.querySelector("[data-body]");
-  ({grupos:tabGroups,alumnos:tabStudents,progreso:tabProgress,copias:tabBackup,docentes:tabTeachers})[S.tTab](body);
+  ({grupos:tabGroups,alumnos:tabStudents,progreso:tabProgress,copias:tabBackup,ajustes:tabSettings,docentes:tabTeachers})[S.tTab](body);
 }
 
 /* ---- Clases ---- */
@@ -862,11 +922,11 @@ function tabStudents(body){
   bindGroupSelect(body); if(!myGroups().length) return;
   const g=byId(DB.groups,S.tGroup);
   const sts=DB.students.filter(s=>s.group===g.id).sort((a,b)=>a.name.localeCompare(b.name,"es"));
-  body.insertAdjacentHTML("beforeend",`<div class="panel">${sts.length?`<table><thead><tr><th></th><th>Nombre</th><th>Lectura</th><th>Escritura</th><th>Letra</th><th>Ayudas</th><th>Letras</th></tr></thead><tbody>
+  body.insertAdjacentHTML("beforeend",`<div class="panel">${sts.length?`<div class="tw"><table><thead><tr><th></th><th>Nombre</th><th>Lectura</th><th>Escritura</th><th>Letra</th><th>Ayudas</th><th>Letras</th></tr></thead><tbody>
     ${sts.map(s=>`<tr class="click" data-s="${s.id}"><td style="font-size:1.6em">${s.avatar}</td><td><b>${esc(s.name)}</b></td>
     <td>${LEVELS.lectura[s.cfg.lectura]}</td><td>${LEVELS.escritura[s.cfg.escritura]}</td><td>${FONTS[s.cfg.font].label}</td>
     <td>${helpChips(s.helps)}</td><td>${s.letters&&s.letters.length<27?`<span class="chip">${s.letters.length} de 27</span>`:"Todas"}</td></tr>`).join("")}
-  </tbody></table>`:`<div class="empty">No hay alumnado en esta clase.</div>`}</div>`);
+  </tbody></table></div>`:`<div class="empty">No hay alumnado en esta clase.</div>`}</div>`);
   body.querySelector("[data-add]").onclick=()=>bulkAdd(g);
   body.querySelectorAll("[data-s]").forEach(r=>r.onclick=()=>studentForm(byId(DB.students,r.dataset.s)));
 }
@@ -952,13 +1012,13 @@ function tabProgress(body){
   const g=byId(DB.groups,S.tGroup);
   const sts=DB.students.filter(s=>s.group===g.id).sort((a,b)=>a.name.localeCompare(b.name,"es"));
   body.insertAdjacentHTML("beforeend",`<div class="panel"><h3>Resumen de la clase</h3>
-  ${sts.length?`<table><thead><tr><th></th><th>Nombre</th><th>Días de uso</th><th>Lectura<br><small>aciertos a la primera</small></th><th>Escritura<br><small>precisión del trazo</small></th><th>Últimas 4 semanas</th><th>Último uso</th></tr></thead><tbody>
+  ${sts.length?`<div class="tw"><table><thead><tr><th></th><th>Nombre</th><th>Días de uso</th><th>Lectura<br><small>aciertos a la primera</small></th><th>Escritura<br><small>precisión del trazo</small></th><th>Últimas 4 semanas</th><th>Último uso</th></tr></thead><tbody>
   ${sts.map(s=>{const recs=DB.records.filter(r=>r.st===s.id); const sm=summarize(recs);
     return `<tr class="click" data-s="${s.id}"><td style="font-size:1.6em">${s.avatar}</td><td><b>${esc(s.name)}</b></td><td>${sm.days}</td>
     <td><span class="chip" style="background:${pctColor(sm.lect)};color:var(--ink)">${sm.lect==null?"—":sm.lect+" %"}</span> <small class="muted">${sm.nL} ej.</small></td>
     <td><span class="chip" style="background:${pctColor(sm.escr)};color:var(--ink)">${sm.escr==null?"—":sm.escr+" %"}</span> <small class="muted">${sm.nE} ej.</small></td>
     <td>${spark(recs)}</td><td>${fmtDate(sm.last)}</td></tr>`;}).join("")}
-  </tbody></table><p class="muted" style="font-size:.85em">Toca un alumno para ver su evolución y el detalle por letras.</p>`:`<div class="empty">No hay alumnado en esta clase.</div>`}</div>`);
+  </tbody></table></div><p class="muted" style="font-size:.85em">Toca un alumno para ver su evolución y el detalle por letras.</p>`:`<div class="empty">No hay alumnado en esta clase.</div>`}</div>`);
   body.querySelectorAll("[data-s]").forEach(r=>r.onclick=()=>{S.tStudent=r.dataset.s;teacherPanel();});
 }
 function weekly(recs,n){
@@ -1006,9 +1066,9 @@ function studentProgress(body,s){
   <div class="panel">${heat(cellL,"Reconocimiento de letras (lectura)")}${heat(cellE,"Trazado de letras (escritura)")}
     <div class="legend"><span><i style="background:#CDEFD9"></i>80 % o más</span><span><i style="background:#FBE7C2"></i>50–79 %</span><span><i style="background:#F8D3D1"></i>menos de 50 %</span><span><i style="background:#EEEAF4"></i>sin datos</span></div></div>
   ${hardest.length?`<div class="panel"><h3>Lo que más le cuesta (sílabas, palabras y frases)</h3>${hardest.map(x=>`<span class="chip" style="background:${pctColor(x.v)};color:var(--ink)">${x.area==="lectura"?"👀":"✏️"} ${esc(x.item)} · ${x.v} %</span>`).join(" ")}</div>`:""}
-  <div class="panel"><h3>Actividad reciente</h3>${recs.length?`<table><thead><tr><th>Fecha</th><th>Área</th><th>Nivel</th><th>Ejercicio</th><th>Intentos</th><th>Resultado</th></tr></thead><tbody>
+  <div class="panel"><h3>Actividad reciente</h3>${recs.length?`<div class="tw"><table><thead><tr><th>Fecha</th><th>Área</th><th>Nivel</th><th>Ejercicio</th><th>Intentos</th><th>Resultado</th></tr></thead><tbody>
     ${recs.slice(-15).reverse().map(r=>`<tr><td>${new Date(r.t).toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</td><td>${r.area==="lectura"?"👀 Lectura":"✏️ Escritura"}</td><td>${LEVELS[r.area][r.lvl]}</td><td><b>${esc(r.item)}</b></td><td>${r.tries}</td><td>${r.acc} %</td></tr>`).join("")}
-  </tbody></table>`:`<div class="empty">Sin actividad.</div>`}</div>`);
+  </tbody></table></div>`:`<div class="empty">Sin actividad.</div>`}</div>`);
   body.querySelector("[data-backp]").onclick=()=>{S.tStudent=null;teacherPanel();};
 }
 
@@ -1051,6 +1111,23 @@ function tabBackup(body){
     }; rd.readAsText(f);
   };
   const w=body.querySelector("[data-wipe]"); if(w) w.onclick=()=>confirmBox("¿Borrar TODOS los datos de este equipo? Haz antes una copia.","Borrar todo",()=>{DB=blankDB();save();S.teacherId=null;screenGroups();});
+}
+
+/* ---- Ajustes del equipo ---- */
+function tabSettings(body){
+  const cur=DB.settings.celebration||"confeti";
+  const opts=[["confeti","Animación con confeti","Estrellas y globos caen por la pantalla al acertar."],
+              ["check","Solo una marca ✓","Aparece un ✓ verde grande y desaparece. Sin movimiento por la pantalla."],
+              ["nada","Sin animaciones","Solo cambia de color la respuesta o el trazo. Lo más tranquilo."]];
+  body.innerHTML=`<div class="panel"><h3>Celebración al acertar</h3>
+    <p class="muted" style="margin-top:0">Se aplica a todas las clases en este equipo. El «modo tranquilo» de cada alumno sigue funcionando aunque aquí elijas confeti.</p>
+    ${opts.map(([k,t,d])=>`<label class="settings-opt ${cur===k?"on":""}"><input type="radio" name="cel" value="${k}" ${cur===k?"checked":""}><span><b>${t}</b><span class="muted">${d}</span></span></label>`).join("")}
+    <div class="row" style="margin-top:.4em"><button class="btn small" data-test>👀 Probar</button></div></div>
+  <div class="panel"><h3>Voz de ánimo</h3>
+    <label class="settings-opt ${DB.settings.praise!==false?"on":""}"><input type="checkbox" data-praise ${DB.settings.praise!==false?"checked":""}><span><b>Decir «¡Muy bien!» al acertar</b><span class="muted">Si lo desactivas, la voz solo lee los enunciados (letras, sílabas, palabras).</span></span></label></div>`;
+  body.querySelectorAll("input[name=cel]").forEach(r=>r.onchange=()=>{DB.settings.celebration=r.value; save(); tabSettings(body); toast("Guardado");});
+  body.querySelector("[data-praise]").onchange=e=>{DB.settings.praise=e.target.checked; save(); tabSettings(body); toast("Guardado");};
+  body.querySelector("[data-test]").onclick=()=>{ celebrate(); praise(["¡Muy bien!"]); };
 }
 
 /* ---- Docentes ---- */
