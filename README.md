@@ -85,5 +85,5 @@ build/          Icono para los paquetes
 - Más actividades: formar palabras con sílabas, dictado o completar la palabra.
 
 ## Licencias
-- Código: MIT.
+- Aplicación: [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.es). Se puede usar y compartir citando al autor, sin fines comerciales y sin distribuir versiones modificadas.
 - Fuentes Andika y Playwrite España: SIL Open Font License 1.1.
