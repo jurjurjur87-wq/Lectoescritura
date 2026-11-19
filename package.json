@@ -1,0 +1,48 @@
+{
+  "name": "lectoescritura",
+  "productName": "Lectoescritura",
+  "version": "0.1.0",
+  "description": "Lectoescritura para pizarra digital táctil: lectura y trazado por niveles, con progreso del alumnado.",
+  "main": "electron/main.js",
+  "author": "jurjurjur87-wq <jurjurjur87-wq@users.noreply.github.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/jurjurjur87-wq/lectoescritura",
+  "scripts": {
+    "start": "electron .",
+    "dist:linux": "electron-builder --linux deb AppImage --publish never",
+    "dist:win": "electron-builder --win nsis --publish never"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "es.lectoescritura.app",
+    "directories": {
+      "buildResources": "build"
+    },
+    "productName": "Lectoescritura",
+    "files": [
+      "app/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Education",
+      "maintainer": "jurjurjur87-wq"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "publish": null
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jurjurjur87-wq/lectoescritura.git"
+  }
+}

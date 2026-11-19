@@ -1,0 +1,11 @@
+{
+  "name": "Lectoescritura",
+  "short_name": "Lectoescritura",
+  "lang": "es",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#FFF8EC",
+  "theme_color": "#6C4AB6",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

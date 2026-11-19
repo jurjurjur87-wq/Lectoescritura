@@ -1,0 +1,41 @@
+# Al crear una etiqueta tipo v0.1.0 genera el .deb (Guadalinex) y el instalador de Windows
+name: Empaquetar
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            cmd: dist:linux
+          - os: windows-latest
+            cmd: dist:win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run ${{ matrix.cmd }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/*.deb
+            dist/*.AppImage
+            dist/*.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paquetes-${{ matrix.os }}
+          path: |
+            dist/*.deb
+            dist/*.AppImage
+            dist/*.exe
