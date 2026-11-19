@@ -3,10 +3,10 @@
    DATOS (se guardan en este equipo)
    ========================================================= */
 const LS_KEY = "lectoescritura.v1";
-const DEFAULT_SETTINGS = {celebration:"confeti", praise:true, sensible:false, pictos:"emoji", lock:false, fixedGroup:null, lastBackup:null, lastAutoBackup:null};
+const DEFAULT_SETTINGS = {celebration:"confeti", praise:true, look:"basico", pictos:"emoji", lock:false, fixedGroup:null, lastBackup:null, lastAutoBackup:null};
 function blankDB(){ return {version:1,teachers:[],groups:[],students:[],records:[],settings:Object.assign({},DEFAULT_SETTINGS)}; }
 function loadDB(){
-  try{ const s=localStorage.getItem(LS_KEY); if(s){ const d=JSON.parse(s); const r=Object.assign(blankDB(),d); r.settings=Object.assign({},DEFAULT_SETTINGS,d.settings||{}); return r; } }catch(e){}
+  try{ const s=localStorage.getItem(LS_KEY); if(s){ const d=JSON.parse(s); const r=Object.assign(blankDB(),d); r.settings=Object.assign({},DEFAULT_SETTINGS,d.settings||{}); if(d.settings&&d.settings.sensible&&!d.settings.look) r.settings.look="sensible"; delete r.settings.sensible; return r; } }catch(e){}
   return blankDB();
 }
 let DB = loadDB();
@@ -41,7 +41,8 @@ const inStudent = ()=>!!(S.studentId||S.demo);
 function enabledLetters(st){ return (st.letters && st.letters.length) ? st.letters : LETTERS; }
 function fontOf(st){ return FONTS[st.cfg.font]||FONTS.imprenta; }
 function show(st,text){ return fontOf(st).transform(text); }
-function sensible(){ return DB.settings.sensible || (inStudent() && student() && student().helps.calma); }
+function sensible(){ return DB.settings.look==="sensible" || !!(inStudent() && student() && student().helps.calma); }
+function plus(){ return DB.settings.look==="plus" && !sensible(); }
 
 function record(area,lvl,item,tries,acc,ms,act){
   if(S.demo) return;
@@ -113,8 +114,9 @@ function celebrate(){
   }
   const c=document.createElement("div"); c.className="celebrate";
   const colors=["#F6C945","#8E6DE0","#5CC48A","#F08AA8","#6AB0F5"];
-  for(let i=0;i<18;i++){
-    const s=document.createElement("span"); s.innerHTML=ICON.star; s.style.color=pick(colors);
+  const fancy=plus(); const n=fancy?32:18;
+  for(let i=0;i<n;i++){
+    const s=document.createElement("span"); s.innerHTML=fancy&&i%3===1?ICON.heart:fancy&&i%3===2?ICON.dot:ICON.star; s.style.color=pick(colors);
     s.style.left=Math.random()*100+"vw"; s.style.animationDelay=(Math.random()*.5)+"s";
     s.style.fontSize=(1.2+Math.random()*1.6)+"em"; c.appendChild(s);
   }
@@ -124,6 +126,7 @@ function applyLook(){
   const st=inStudent()?student():null;
   document.body.classList.toggle("grande", !!(st && st.helps && st.helps.grande));
   document.body.classList.toggle("sensible", !!sensible());
+  document.body.classList.toggle("plus", plus());
 }
 function topBar(title,back,right=""){
   const st=inStudent()?student():null;
@@ -160,15 +163,34 @@ function pinGate(title,onOk){
 /* =========================================================
    PANTALLAS DEL ALUMNADO
    ========================================================= */
+function greeting(){ const hr=new Date().getHours(); return hr<14?"¡Buenos días!":hr<21?"¡Buenas tardes!":"¡Buenas noches!"; }
+function letterOfDay(){ const d=new Date(); const doy=Math.floor((d-new Date(d.getFullYear(),0,0))/DAY); return LETTERS[doy%LETTERS.length]; }
+function homeHero(){
+  const l=letterOfDay(), w=wordOf(LETTER_WORD[l]);
+  const date=new Date().toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"});
+  return `<div class="home-hero">
+    <div class="home-scene" aria-hidden="true">${SCENE_SVG}</div>
+    <div class="home-head">
+      <div class="home-logo">${LOGO_SVG}</div>
+      <div class="home-greet"><div class="greet">${greeting()}</div><div class="date">${date}</div></div>
+      <button class="lotd" data-lotd aria-label="Letra del día">
+        <span class="lotd-t">Letra del día</span>
+        <span class="lotd-body"><span class="lotd-l">${l.toLocaleUpperCase("es")}${l}</span>${w?pic(w.w,w.e,"emoji lotd-pic"):""}</span>
+        <span class="lotd-w">${w?esc(w.w):""}</span>
+      </button>
+    </div>
+  </div>`;
+}
 function screenGroups(force){
   S.studentId=null; S.demo=false;
   const fixed=DB.settings.lock && byId(DB.groups,DB.settings.fixedGroup);
   if(fixed && !force){ S.groupId=fixed.id; return screenStudents(); }
   S.groupId=null; applyLook();
   const groups=DB.groups;
-  h(`${topBar("Lectoescritura",false,`<button class="iconbtn" data-teacher aria-label="Docentes">${ICON.gear}</button>`)}
-  <div class="main">
-    <div class="hero"><h2>¿Cuál es tu clase?</h2></div>
+  h(`${topBar("",false,`<button class="iconbtn" data-teacher aria-label="Docentes">${ICON.gear}</button>`)}
+  <div class="main home">
+    ${homeHero()}
+    <h2 class="home-q">¿Cuál es tu clase?</h2>
     ${groups.length?`<div class="grid">${groups.map(g=>`
       <button class="tile group-tile" data-g="${g.id}" style="--gc:${g.color}">
         <span class="big deco">${g.icon||"🏫"}</span><span>${esc(g.name)}</span>
@@ -177,6 +199,7 @@ function screenGroups(force){
     :`<div class="empty"><p style="font-size:1.3em">Todavía no hay clases.</p><p>Pulsa el engranaje de arriba a la derecha para entrar como docente y crear la primera.</p></div>`}
   </div>`);
   app.querySelector("[data-teacher]").onclick=teacherLogin;
+  app.querySelector("[data-lotd]").onclick=()=>{ const l=letterOfDay(); const w=LETTER_WORD[l]; say(`La letra de hoy es la ${LETTER_NAMES[l]}, de ${w}`,"letra:"+l); };
   app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{S.groupId=b.dataset.g; screenStudents();});
 }
 function screenStudents(){
@@ -565,7 +588,7 @@ function backupBanner(){
 function teacherPanel(){
   const t=me(); if(!t) return screenGroups(true);
   document.body.classList.remove("grande");
-  document.body.classList.toggle("sensible",!!DB.settings.sensible);
+  document.body.classList.toggle("sensible",DB.settings.look==="sensible"); document.body.classList.remove("plus");
   const tabs=[["grupos","Clases"],["alumnos","Alumnado"],["progreso","Progreso"],["audios","Audios"],["copias","Copias"],["ajustes","Ajustes"]];
   if(t.admin) tabs.push(["docentes","Docentes"]);
   h(`<div class="teacher">
@@ -951,8 +974,14 @@ function tabSettings(body){
   const gs=DB.groups;
   body.innerHTML=`
   <div class="panel"><h3>Estilo visual</h3>
-    ${opt("look","normal",!st.sensible,"Normal","Colores suaves, dibujos y pequeñas animaciones al acertar.")}
-    ${opt("look","sensible",!!st.sensible,"Modo sensible para todo el equipo","Aspecto sobrio: colores apagados, sin sombras, sin adornos y sin animaciones. También se puede activar solo para un alumno desde su ficha.")}
+    <div class="looks">
+      ${[["plus","Plus","Más colorido y adornado: ilustración en la portada, degradados y celebraciones más festivas."],
+         ["basico","Básico","Colores suaves, iconos sencillos y pequeñas celebraciones."],
+         ["sensible","Sensible","Sobrio: colores apagados, sin sombras, sin adornos y sin animaciones."]].map(([k,t,d])=>`
+        <label class="look-card ${(st.look||"basico")===k?"on":""}"><input type="radio" name="look" value="${k}" ${(st.look||"basico")===k?"checked":""}>
+          <span class="look-prev look-${k}"><i></i><i></i><i></i></span><b>${t}</b><span class="muted small-t">${d}</span></label>`).join("")}
+    </div>
+    <p class="muted small-t" style="margin:.6em 0 0">El modo sensible también se puede activar solo para un alumno desde su ficha, sea cual sea el aspecto elegido aquí.</p>
   </div>
   <div class="panel"><h3>Celebración al acertar</h3>
     <p class="muted" style="margin-top:0">En modo sensible no hay animaciones, elijas lo que elijas aquí.</p>
@@ -975,7 +1004,7 @@ function tabSettings(body){
       <select data-fixed class="sel"><option value="">Ninguna: el alumnado elige su clase</option>${gs.map(g=>`<option value="${g.id}" ${st.fixedGroup===g.id?"selected":""}>${esc(g.name)}</option>`).join("")}</select></label></div>
   <div class="panel"><h3>Acerca de</h3><p class="muted small-t" style="margin:0">Lectoescritura · Licencia CC BY-NC-ND 4.0. Fuentes Andika y Playwrite España (SIL OFL). Los datos se guardan solo en este equipo.</p></div>`;
   const rerender=()=>{ teacherPanel(); };
-  body.querySelectorAll("input[name=look]").forEach(r=>r.onchange=()=>{st.sensible=r.value==="sensible"; save(); rerender(); toast("Guardado");});
+  body.querySelectorAll("input[name=look]").forEach(r=>r.onchange=()=>{st.look=r.value; save(); rerender(); toast("Guardado");});
   body.querySelectorAll("input[name=cel]").forEach(r=>r.onchange=()=>{st.celebration=r.value; save(); rerender(); toast("Guardado");});
   body.querySelector("input[name=praise]").onchange=e=>{st.praise=e.target.checked; save(); rerender(); toast("Guardado");};
   body.querySelectorAll("input[name=pic]").forEach(r=>r.onchange=()=>{st.pictos=r.value; save(); rerender(); toast("Guardado");});

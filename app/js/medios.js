@@ -118,6 +118,30 @@ const ICON = (() => {
     again: p('<path d="M4 12a8 8 0 1 0 2.3-5.7"/><path d="M4 4v4h4"/>'),
     home: p('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>'),
     star: '<svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z"/></svg>',
+    heart: '<svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 20.5s-7.5-4.4-7.5-10A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.9c0 5.6-7.5 10-7.5 10z"/></svg>',
+    dot: '<svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="6"/></svg>',
     hand: p('<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M11 10.5V4a1.5 1.5 0 0 1 3 0v6.5"/><path d="M14 10.5V5.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-.5a6.5 6.5 0 0 1-5-2.4L3 16.5a1.5 1.5 0 0 1 2.3-2L8 17"/>'),
   };
 })();
+
+/* Logotipo y escena de la portada (dibujos propios) */
+const LOGO_SVG = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="var(--primary)"/>
+<rect x="11" y="15" width="42" height="34" rx="6" fill="#fff"/><path d="M18 40 L25 22 L32 40 M21 34 H29" stroke="var(--primary)" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M37 28c5-4 10 1 5 6-4 4-1 8 5 4" stroke="#3E9E68" stroke-width="3.4" fill="none" stroke-linecap="round"/><path d="M15 44 H49" stroke="#6AA2E8" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+const SCENE_SVG = `<svg viewBox="0 0 1200 260" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#CFE6FF"/><stop offset="1" stop-color="#FFF3DF"/></linearGradient></defs>
+<rect width="1200" height="260" fill="url(#sky)"/>
+<g fill="#FFD66B"><circle cx="1060" cy="70" r="38"/></g>
+<g stroke="#FFD66B" stroke-width="6" stroke-linecap="round">${Array.from({length:10},(_,i)=>{const a=i*Math.PI/5;return `<line x1="${1060+Math.cos(a)*52}" y1="${70+Math.sin(a)*52}" x2="${1060+Math.cos(a)*66}" y2="${70+Math.sin(a)*66}"/>`}).join("")}</g>
+<g fill="#fff" opacity=".95"><ellipse cx="220" cy="62" rx="58" ry="20"/><ellipse cx="258" cy="50" rx="36" ry="22"/><ellipse cx="640" cy="44" rx="48" ry="16"/><ellipse cx="672" cy="36" rx="28" ry="17"/></g>
+<path d="M0 200 Q200 140 420 190 T840 180 T1200 170 V260 H0z" fill="#BFE3B4"/>
+<path d="M0 230 Q260 180 540 222 T1200 210 V260 H0z" fill="#9ED193"/>
+<g><rect x="940" y="150" width="10" height="40" rx="3" fill="#A97C50"/><circle cx="945" cy="140" r="26" fill="#7CC36E"/><circle cx="1110" cy="168" r="18" fill="#86CB78"/><rect x="1106" y="176" width="8" height="26" rx="3" fill="#A97C50"/></g>
+<g font-family="Andika, sans-serif" font-weight="700" font-size="64">
+<text x="470" y="150" fill="#8C78D6" transform="rotate(-10 490 130)">a</text>
+<text x="590" y="112" fill="#F08AA8" transform="rotate(8 610 95)">B</text>
+<text x="700" y="172" fill="#5CB6D9" transform="rotate(-6 720 150)">c</text>
+<text x="800" y="118" fill="#F2B43E" transform="rotate(10 820 100)">M</text>
+<text x="870" y="200" fill="#3E9E68" transform="rotate(-8 890 180)">o</text></g>
+<g fill="#F08AA8"><circle cx="420" cy="80" r="5"/><circle cx="560" cy="96" r="4"/><circle cx="880" cy="60" r="5"/></g>
+</svg>`;
