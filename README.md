@@ -10,28 +10,40 @@ Pensada para Infantil, Primaria y alumnado con necesidades específicas: cada al
 |---|---|
 | ![](docs/capturas/14_leer_palabras_cursiva.jpg) | ![](docs/capturas/12_progreso_alumna.jpg) |
 
-## Qué incluye (versión 0.1)
+## Qué incluye (versión 0.2)
 
 **Alumnado**
 - Entrada sin saber leer: el alumno toca su clase y después su animal.
-- **Leer**, en 4 niveles: letras (escucha y toca), sílabas, palabras con dibujo y frases.
-- **Escribir**, en 3 niveles: trazado de letras (abecedario con estrellas), sílabas y palabras.
-- El trazado se comprueba de verdad: tiene que repasarse toda la letra, zona por zona, sin salirse demasiado.
-- Voz en español para enunciados y refuerzos.
+- **Leer**, en 4 niveles con actividades que se alternan:
+  1. Letras: escucha y toca la letra.
+  2. Sílabas: escucha y toca la sílaba, o completa la sílaba que falta.
+  3. Palabras: elige la palabra del dibujo, forma la palabra con sílabas o completa la letra que falta.
+  4. Frases: lee y toca el dibujo, u ordena la frase.
+- **Escribir**, en 3 niveles: trazado de letras (abecedario con estrellas), sílabas y palabras, y dictado con letras móviles.
+- **Trazado con orden y dirección** (imprenta y mayúsculas): punto verde de inicio, flecha, número de trazo y modelo animado («Ver cómo se hace»). Avisa si se empieza al revés o se sale del camino.
+- **Cursiva ligada**: se comprueba que se repasa toda la letra, zona por zona.
+- Voz en español, o la **voz grabada por el docente** si la hay.
 
-**Tipos de letra:** imprenta minúscula (Andika), mayúsculas y cursiva ligada escolar (Playwrite España).
+**Tipos de letra:** imprenta minúscula, mayúsculas y cursiva ligada escolar (Playwrite España).
 
-**Ayudas por alumno:** botones grandes, voz lenta, modo tranquilo (sin confeti), apoyo con dibujos, exigencia del trazado (exigente / normal / muy flexible) y letras trabajadas (por ejemplo, solo vocales, o m, p, l, s).
+**Ayudas por alumno:** modo sensible, botones grandes, voz lenta, apoyo con dibujos, exigencia del trazado y letras trabajadas.
+
+**Estilo visual**
+- Normal: colores suaves, iconos sencillos y pequeñas celebraciones.
+- **Modo sensible** (para todo el equipo o para un alumno): colores apagados, sin sombras, sin adornos y sin animaciones.
+- Celebración configurable: estrellas, solo ✓ o nada. Voz de ánimo activable.
 
 **Docentes**
-- Cuentas con PIN de 4 cifras. La primera cuenta es la de administración.
-- Clases compartidas entre docentes (por ejemplo, tutora + PT + AL).
+- Cuentas con PIN. Clases compartidas entre docentes (tutora + PT + AL).
 - Alta rápida pegando una lista de nombres.
-- Progreso: resumen de la clase, evolución semanal, mapa por letras y lo que más le cuesta a cada alumno.
-- Copias de seguridad en archivo (de todo o por clase), para guardar o pasar datos entre equipos.
-- Modo «Demostración» para que el docente haga de modelo sin guardar progreso.
+- **Audios**: grabar la propia voz para letras, sílabas, palabras, frases y ánimos.
+- **Dibujos**: emojis o pictogramas de ARASAAC (se descargan una vez y funcionan sin conexión). Cada dibujo se puede cambiar por una imagen propia.
+- Progreso: resumen de la clase, evolución semanal, mapa por letras y lo que más cuesta.
+- **Informe imprimible por alumno** (o en PDF), con observaciones del docente.
+- **Bloqueo del aula**: clase fija en el equipo; cambiar de clase, el modo demostración y cerrar la app (versión de escritorio) piden PIN.
+- Copias de seguridad en archivo (con o sin audios), recordatorio cada 14 días y, en la versión de escritorio, **copia automática diaria** en `Documentos/Lectoescritura/copias`.
 
-Los datos se guardan **solo en el equipo** donde se usa la app. No se envía nada a internet.
+Los datos se guardan **solo en el equipo** donde se usa la app. Solo se conecta a internet si el docente pide descargar los pictogramas.
 
 ## Cómo usarla
 
@@ -71,7 +83,10 @@ git push origin v0.1.0
 
 ```
 app/            La aplicación web (todo lo que ve el alumno y el docente)
-  index.html    Código de la aplicación
+  index.html    Página principal
+  css/          Estilos (normal y modo sensible)
+  js/           contenidos.js (letras, palabras, frases), trazos.js (forma y orden
+                de cada letra), medios.js (audios, pictogramas, iconos), app.js
   fonts/        Fuentes escolares (licencia SIL OFL)
   sw.js         Uso sin conexión en tablet / web
 electron/       Envoltorio de escritorio para Guadalinex y Windows
@@ -79,11 +94,10 @@ build/          Icono para los paquetes
 ```
 
 ## Ideas para próximas versiones
-- Orden y dirección de los trazos, con punto de inicio y animación del modelo.
-- Grabar audios propios (voz del docente) para letras y sílabas.
-- Pictogramas de ARASAAC en lugar de emojis.
-- Más actividades: formar palabras con sílabas, dictado o completar la palabra.
+- Orden de trazos también en cursiva ligada.
+- Más palabras y frases, editables por el docente.
 
 ## Licencias
 - Aplicación: [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.es). Se puede usar y compartir citando al autor, sin fines comerciales y sin distribuir versiones modificadas.
 - Fuentes Andika y Playwrite España: SIL Open Font License 1.1.
+- Pictogramas (si se descargan): Sergio Palao. Origen: ARASAAC (https://arasaac.org). Licencia: CC BY-NC-SA. Propiedad: Gobierno de Aragón (España).
