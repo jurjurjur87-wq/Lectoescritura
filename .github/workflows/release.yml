@@ -1,8 +1,7 @@
-# Al crear una etiqueta tipo v0.1.0 genera el .deb (Guadalinex) y el instalador de Windows
+# Genera el .deb (Guadalinex) y el instalador de Windows SOLO cuando se lanza a mano
+# (pestaña Actions → Empaquetar → Run workflow). Las etiquetas de versión no lo activan.
 name: Empaquetar
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
 permissions:
   contents: write
