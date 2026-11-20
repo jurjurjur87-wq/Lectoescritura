@@ -354,3 +354,115 @@ playa|La playa|tiene arena;está junto al mar|está en el cielo;es de chocolate
 montaña|La montaña|es alta;tiene piedras|es pequeña como un botón;se come
 hielo|El hielo|es frío;se derrite|es caliente;ladra;quema
 `;
+
+// Frases cortas para escribir (2 o 3 palabras): "Frase.|palabra del dibujo"
+const BANCO_FRASES_CORTAS = `
+Mi casa.|casa
+Un sol.|sol
+La luna.|luna
+Mi mamá.|mamá
+Mi papá.|papá
+Un sapo.|rana
+Veo un pez.|pez
+Mi oso.|oso
+Un pato.|pato
+La vaca.|vaca
+Mi gato.|gato
+Un dado.|dado
+Una uva.|uva
+Mi pelota.|pelota
+El oso come.|oso
+Mi pato nada.|pato
+La cámara.|cámara
+Un lobo.|lobo
+Una nube.|nube
+Un pájaro.|pájaro
+Tomo sopa.|sopa
+Pinto la luna.|luna
+Veo la mano.|mano
+Mi dedo.|dedo
+Un helado.|helado
+Toco el piano.|piano
+Lola lee.|libro
+Pepe ríe.|niño
+Mimo al gato.|gato
+Ana come pan.|pan
+Paco sube.|niño
+Sale el sol.|sol
+Mi abuelo.|abuelo
+La ola.|ola
+Una seta.|seta
+Mi moto.|moto
+Un tomate.|tomate
+Toma la llave.|llave
+Una rosa.|rosa
+Mi pie.|pie
+Mi boca.|boca
+Un ratón.|ratón
+La rana.|rana
+Un limón.|limón
+La pera.|pera
+Mi taza.|taza
+El agua.|agua
+Un regalo.|regalo
+Una vela.|vela
+Mi bota.|bota
+La cama.|cama
+Un sofá.|sofá
+El tren.|tren
+Un barco.|barco
+La isla.|isla
+Mi coche.|coche
+El taxi.|taxi
+La tiza.|tiza
+Una caja.|caja
+Mi camiseta.|camiseta
+Ese mono.|mono
+Mi reloj.|reloj
+Un dragón.|dragón
+Mi tarta.|tarta
+Bebo leche.|leche
+Como queso.|queso
+Veo la nieve.|nieve
+Un búho.|búho
+La jirafa.|jirafa
+Un cepillo.|cepillo
+Una hoja.|hoja
+El fuego.|fuego
+Un hada.|hada
+La reina.|reina
+El rey.|rey
+Un yoyó.|yoyó
+Mi kiwi.|kiwi
+Un payaso.|payaso
+La foca.|foca
+Una abeja.|abeja
+Mi lápiz.|lápiz
+Mi libro.|libro
+Un zapato.|zapato
+La mochila.|mochila
+Una pizza.|pizza
+Un pan.|pan
+La miel.|miel
+Mi globo.|globo
+Una flor.|flor
+El árbol.|árbol
+Un mapa.|mapa
+Una moneda.|moneda
+La escoba.|escoba
+Una gorra.|gorra
+Mi bici.|bicicleta
+El avión.|avión
+Un cohete.|cohete
+Mi tambor.|tambor
+Mi muñeca.|muñeca
+Una ballena.|ballena
+Mi silla.|silla
+El dinero.|dinero
+Un camello.|camello
+La lupa.|lupa
+Un pino.|pino
+Mi bebé.|bebé
+La playa.|playa
+Un cubo.|cubo
+`;

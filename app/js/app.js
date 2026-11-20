@@ -115,7 +115,10 @@ const INSTR={
   "di":"Di…","reves":"…al revés","igual":"¿Empiezan igual?","cadena":"¿Qué palabra empieza como termina…",
   "cuantas-pal":"¿Cuántas palabras tiene la frase?","trocitos":"Escucha los trocitos y toca el dibujo","escena":"Escucha y toca el dibujo",
   "verdad":"¿Es verdad o es mentira?","une":"Une cada palabra con su dibujo","equivocada":"¿Qué tarjeta tiene mal la palabra?",
-  "copia":"Copia la palabra","completa":"¿Qué letra falta? Escríbela",
+  "copia":"Copia lo que ves","completa":"¿Qué letra falta? Escríbela","completa-silaba":"¿Qué sílaba falta? Escríbela",
+  "escribe-ves":"¿Qué es? Escribe su nombre","ordena":"Ordena las letras","escribe-oyes":"Escribe lo que oyes",
+  "empieza-letra":"¿Con qué letra empieza? Escríbela","pre":"Repasa el camino sin salirte","completa-frase":"¿Qué palabra falta? Escríbela",
+  "dictado-frase":"Escucha y forma la frase",
   "toca":"Toca una de las respuestas","huecos":"Primero completa todos los huecos","ayuda":"Te ayudo: he quitado una"
 };
 const I=id=>({k:"ins:"+id,t:INSTR[id].replace(/…/g,"").trim()});
@@ -369,7 +372,7 @@ function screenArea(area){
 }
 function startActivity(area,e){
   const st=student(); S.area=area;
-  if(area==="escritura"&&e.lvl===1) return screenAlphabet();
+  if(area==="escritura"&&e.lvl===1&&e.act==="trazo") return screenAlphabet();
   runRound(area,e.lvl,buildItems(area,e.lvl,st,roundLen(st),e.act),()=>startActivity(area,e),e.name);
 }
 function backToArea(){ if(S.area) screenArea(S.area); else screenStudentHome(); }
@@ -381,7 +384,8 @@ function pools(st){
   let syl=SYLLABLES.filter(ok); if(syl.length<4) syl=SYLLABLES;
   let words=WORDS.filter(x=>ok(x.w)); if(words.length<4) words=WORDS;
   let phr=PHRASES.filter(x=>ok(x.t.replace(/[.,]/g,""))); if(phr.length<3) phr=PHRASES;
-  return {letters:enabledLetters(st), syl, words, phr, multi:words.filter(w=>w.s.length>1)};
+  let short=SHORT_PHRASES.filter(x=>ok(x.t.replace(/[.,]/g,""))); if(short.length<8) short=SHORT_PHRASES;
+  return {letters:enabledLetters(st), syl, words, phr, short, multi:words.filter(w=>w.s.length>1)};
 }
 // Lo que ha salido hace poco (en este equipo), para no repetirlo enseguida. Se guarda entre sesiones.
 const RECENT=(()=>{ try{ return JSON.parse(localStorage.getItem("lectoescritura.recent")||"[]"); }catch(e){ return []; } })();
@@ -418,7 +422,19 @@ function buildItems(area,lvl,st,n=ROUND,only){
     else if(["mas-corta","suena-igual","encadenadas","anade-silaba","une-dibujo","intrusa-lee"].includes(act)){ it={act}; }
     else if(act==="verdad-mentira"){ const P2=VERDAD.filter(v=>stripAcc(v.t.toLowerCase()).replace(/[^a-zñ]/g,"").split("").every(c=>enabledLetters(st).includes(c)));
       const src=(P2.length>=10?P2:VERDAD); const want=Math.random()<.5; it={act,item:pickN(src.filter(v=>v.ok===want),1)[0]}; it.key=it.item.t; }
-    else if(act==="copia"){ const w=pickN(P.words.filter(x=>x.w.length<=7),1)[0]||pickN(WORDS,1)[0]; it={act,key:w.w,word:w}; }
+    else if(area==="escritura"&&lvl===4&&["trazo","copia","dictado","completa-frase"].includes(act)){
+      const ph=pickN(P.short||SHORT_PHRASES,1)[0]; it={act,phrase:ph,key:ph.t};
+      if(act==="completa-frase"){ const ws=ph.t.replace(/[.,]/g,"").split(" "); let i=ws.findIndex(x=>x.toLowerCase()===ph.k); if(i<0) i=ws.map((x,j)=>[x.length,j]).filter(([,j])=>j>0).sort((a,b)=>b[0]-a[0])[0][1]; it.idx=i; }
+    }
+    else if(act==="preescritura"){ it={act,key:pickN(PRE.list,1)[0]}; }
+    else if(act==="copia"||act==="dictado-mano"){
+      if(lvl===1) it={act,key:pickN(P.letters,1)[0]};
+      else if(lvl===2) it={act,key:pickN(P.syl,1)[0]};
+      else { const w=pickN(P.words.filter(x=>x.w.length<=(act==="copia"?7:6)),1)[0]||pickN(WORDS,1)[0]; it={act,key:w.w,word:w}; }
+    }
+    else if(act==="empieza-letra"){ const en=enabledLetters(st); const src=P.words.filter(w=>en.includes(w.w[0])); const w=pickN(src.length>=4?src:WORDS.filter(x=>/^[a-zñ]/.test(x.w)),1)[0]; it={act,key:w.w,word:w}; }
+    else if(act==="escribe-dibujo"||act==="ordena-letras"){ const w=pickN(P.words.filter(x=>x.w.length>=3&&x.w.length<=7&&new Set(x.w).size>1),1)[0]||pickN(WORDS,1)[0]; it={act,key:w.w,word:w}; }
+    else if(act==="completa"&&lvl===2){ const w=pickN(P.multi.length?P.multi:WORDS.filter(x=>x.s.length>1),1)[0]; it={act,key:w.w,word:w,idx:Math.floor(Math.random()*w.s.length)}; }
     else if(act==="completa"){ const w=pickN(P.words.filter(x=>x.w.length>=3&&x.w.length<=8),1)[0]||pickN(WORDS.filter(x=>x.w.length>=3),1)[0];
       const idx=pick([...w.w].map((c,i)=>/[a-zñ]/.test(c)?i:-1).filter(i=>i>=0)); it={act,key:w.w,word:w,idx}; }
     else if(act==="trazo"||act==="dictado"){
@@ -446,6 +462,7 @@ function startWriting(){
   if(st.cfg.escritura===1) return screenAlphabet();
   runRound("escritura",st.cfg.escritura,buildItems("escritura",st.cfg.escritura,st),startWriting);
 }
+const TRACE_ACTS=["trazo","copia","completa","preescritura","dictado-mano","empieza-letra"];
 function runRound(area,lvl,items,again,title){
   let idx=0, good=0; const token=S.screenSeq;
   const next=()=>{
@@ -460,9 +477,10 @@ function runRound(area,lvl,items,again,title){
       "contar-silabas":actCountSyl,"mas-larga":actLonger,"une-silabas":actBlend,"cuenta-palabras":actCountWords,"termina-en":actEnds,
       "intrusa":actOddOne,"rima":actRhyme,"quita-silaba":actDelete,"da-la-vuelta":actReverse,"sonido-en":actSound,"empieza-por":actSound,"elige-escena":actChooseScene,"monta-escena":actBuildScene,
       "mas-corta":actLonger,"suena-igual":actSameStart,"encadenadas":actChain,"anade-silaba":actAdd,
-      "une-dibujo":actMatch,"intrusa-lee":actWrongCard,"verdad-mentira":actTrueFalse,"copia":actCopy,"completa":actComplete
+      "une-dibujo":actMatch,"intrusa-lee":actWrongCard,"verdad-mentira":actTrueFalse,"copia":actCopy,"completa":actComplete,
+      "preescritura":actPre,"dictado-mano":actDictHand,"empieza-letra":actFirstLetter,"escribe-dibujo":actBuild,"ordena-letras":actBuild,"completa-frase":actBuild
     }[it.act];
-    if(!["trazo","copia","completa"].includes(it.act)) startPending({area,lvl,act:it.act,ref:it});
+    if(!TRACE_ACTS.includes(it.act)) startPending({area,lvl,act:it.act,ref:it});
     A(it,ctx);
   };
   next();
@@ -586,6 +604,23 @@ function actBuild(it,ctx){
     target=it.phrase.t.replace(/\.$/,"").split(" "); extra=[]; joiner=" ";
     promptHTML=`${pic(it.phrase.k,it.phrase.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button>`;
     sayFn=()=>say(it.phrase.t,"frase:"+it.phrase.t);
+  }else if(it.act==="escribe-dibujo"||it.act==="ordena-letras"){
+    const w=it.word; target=[...w.w];
+    extra=it.act==="ordena-letras"?[]:shuffle(enabledLetters(st).filter(l=>!stripAcc(w.w).includes(l))).slice(0,2);
+    promptHTML=`${pic(w.w,w.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">${it.act==="ordena-letras"?"Ordena las letras":"¿Qué es? Escribe su nombre"}</span>`;
+    sayFn=it.act==="ordena-letras"?()=>speak([I("ordena"),Wd(w.w)]):()=>speak([I("escribe-ves")]);
+  }else if(it.act==="dictado"&&it.phrase){   // dictado de frases: palabras móviles con alguna de sobra
+    target=it.phrase.t.replace(/\.$/,"").split(" "); joiner=" ";
+    const lowT=target.map(x=>x.toLowerCase());
+    extra=shuffle([...new Set(PHRASES.flatMap(p=>p.t.replace(/[.,]/g,"").split(" ")))].filter(x=>x.length>2&&!lowT.includes(x.toLowerCase())&&x[0]===x[0].toLowerCase())).slice(0,2);
+    promptHTML=`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">Escucha y forma la frase</span>`;
+    sayFn=()=>sayItem(it,4);
+  }else if(it.act==="completa-frase"){        // falta una palabra: se forma con letras
+    const ws=it.phrase.t.replace(/\.$/,"").split(" "); const miss=ws[it.idx]; target=[...miss];
+    extra=shuffle(enabledLetters(st).filter(l=>!stripAcc(miss.toLowerCase()).includes(l))).slice(0,2);
+    const shown=ws.map((x,i)=>i===it.idx?`<span class="gap gap-long">?</span>`:txt(st,x)).join(" ");
+    promptHTML=`${pic(it.phrase.k,it.phrase.e)}<span class="phrase" style="font-family:${fcss}">${shown}</span><button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button>`;
+    sayFn=()=>sayItem(it,4);
   }else{ // dictado con letras móviles
     const txt=it.key; target=[...txt]; const w=it.word;
     const pool=enabledLetters(st).filter(l=>!txt.includes(l)&&!stripAcc(txt).includes(l));
@@ -599,7 +634,7 @@ function actBuild(it,ctx){
   <div class="main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt">${promptHTML}</div>
-    <div class="slots ${it.act==="ordena-frase"?"words":""}" style="font-family:${fcss}" data-slots></div>
+    <div class="slots ${joiner?"words":""}" style="font-family:${fcss}" data-slots></div>
     <div class="tiles" style="font-family:${fcss}" data-tiles></div>
     ${okBar()}
   </div>`);
@@ -994,38 +1029,70 @@ function traceLetter(l){
     lvl:1,act:"trazo",autoDemo:true,onBack:screenAlphabet,nextLabel:"Siguiente letra",
     onDone:()=>{ const i=en.indexOf(l); traceLetter(en[(i+1)%en.length]); }});
 }
+const cleanPhrase=t=>t.replace(/[.,¿?¡!]/g,"").trim();
+const sayItem=(it,lvl)=>it.phrase?say(it.phrase.t,"frase:"+it.phrase.t):lvl===1?say(LETTER_NAMES[it.key]||it.key,"letra:"+it.key):lvl===2?say(it.key,"silaba:"+it.key):say(it.key,"palabra:"+it.key);
+// Tarjeta lateral con el modelo grande (sin dibujo): letras, sílabas y frases
+const modelCard=(st,text,ph)=>`<div class="side-card word-card big-model">${ph?pic(ph.k,ph.e):""}<div class="word model-${text.length>8?"long":"short"}" style="font-family:${fontOf(st).css}">${txt(st,text)}</div></div>`;
+const earCard=()=>`<div class="side-card word-card ear-card"><span class="ear-big">${ICON.ear}</span><div class="muted">Escucha y escribe</div></div>`;
 function actTrace(it,ctx){
   const isWord=ctx.lvl===3;
+  if(it.phrase){
+    return traceScreen({text:cleanPhrase(it.phrase.t),item:it.phrase.t,title:actName("escritura",ctx.lvl,"trazo"),lvl:ctx.lvl,act:"trazo",progress:[ctx.idx,ctx.n],
+      side:`<div class="side-card word-card">${pic(it.phrase.k,it.phrase.e)}</div>`,speak:()=>sayItem(it,4),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)}); }
   traceScreen({text:it.key,title:actName("escritura",ctx.lvl,"trazo"),word:it.word||null,lvl:ctx.lvl,act:"trazo",progress:[ctx.idx,ctx.n],
     speak:()=>say(it.key,(isWord?"palabra:":"silaba:")+it.key),
     onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
 }
-// Copia la palabra: se ve escrita y se escribe en la pauta sin modelo punteado
+// Copia (letra, sílaba, palabra o frase): se ve escrita y se escribe en la pauta sin modelo punteado
 function actCopy(it,ctx){
-  traceScreen({text:it.key,title:actName("escritura",ctx.lvl,"copia"),word:it.word,lvl:ctx.lvl,act:"copia",progress:[ctx.idx,ctx.n],
-    blank:true,bigModel:true,speak:()=>speak([I("copia"),Wd(it.key)]),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
+  const st=student(); const lvl=ctx.lvl; const text=it.phrase?cleanPhrase(it.phrase.t):it.key;
+  traceScreen({text,item:it.phrase?it.phrase.t:it.key,title:actName("escritura",lvl,"copia"),word:lvl===3?it.word:null,lvl,act:"copia",progress:[ctx.idx,ctx.n],
+    blank:true,bigModel:true,side:lvl===3?undefined:modelCard(st,it.phrase?it.phrase.t:it.key,it.phrase),
+    speak:()=>{ speak([I("copia")]); setTimeout(()=>sayItem(it,lvl),1600); },onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
 }
-// Completa la palabra: falta una letra y se escribe a mano
+// Escribe lo que oyes: a mano y sin verlo
+function actDictHand(it,ctx){
+  const lvl=ctx.lvl;
+  traceScreen({text:it.key,title:actName("escritura",lvl,"dictado-mano"),lvl,act:"dictado-mano",progress:[ctx.idx,ctx.n],
+    blank:true,side:earCard(),speak:()=>sayItem(it,lvl),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
+}
+// ¿Con qué letra empieza?: se ve el dibujo y se escribe la primera letra
+function actFirstLetter(it,ctx){
+  const w=it.word;
+  traceScreen({text:w.w[0],item:w.w,title:actName("escritura",1,"empieza-letra"),lvl:1,act:"empieza-letra",progress:[ctx.idx,ctx.n],
+    blank:true,side:`<div class="side-card word-card">${pic(w.w,w.e)}</div>`,
+    speak:()=>speak([Wd(w.w),I("empieza-letra")]),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
+}
+// Preescritura: caminos para repasar
+function actPre(it,ctx){
+  const p=PRE.info(it.key);
+  traceScreen({text:it.key,item:"trazo:"+it.key,title:actName("escritura",1,"preescritura")+" · "+p.name,lvl:1,act:"preescritura",progress:[ctx.idx,ctx.n],
+    layoutFn:PRE.layout,side:`<div class="side-card word-card pre-card"><span class="pre-ico">${p.icon}</span><div class="word">${esc(p.name)}</div></div>`,
+    speak:()=>speak([I("pre")]),autoDemo:true,onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
+}
+// Completa: falta una letra (nivel 3) o una sílaba (nivel 2) y se escribe a mano
 function actComplete(it,ctx){
-  const st=student(); const w=it.word.w; const ch=w[it.idx];
-  const pre=w.slice(0,it.idx), post=w.slice(it.idx+1);
+  const st=student(); const w=it.word.w;
+  let miss,pre,post;
+  if(ctx.lvl===2){ const sy=it.word.s; miss=sy[it.idx]; pre=sy.slice(0,it.idx).join(""); post=sy.slice(it.idx+1).join(""); }
+  else { miss=w[it.idx]; pre=w.slice(0,it.idx); post=w.slice(it.idx+1); }
   const gap=`<span class="gap-word">${pre?txt(st,pre):""}<span class="gap">?</span>${post?txt(st,post):""}</span>`;
-  traceScreen({text:ch,item:w,title:actName("escritura",ctx.lvl,"completa"),word:it.word,lvl:ctx.lvl,act:"completa",progress:[ctx.idx,ctx.n],
-    blank:true,wordHTML:gap,speak:()=>speak([Wd(w),I("completa")]),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
+  traceScreen({text:miss,item:w,title:actName("escritura",ctx.lvl,"completa"),word:it.word,lvl:ctx.lvl,act:"completa",progress:[ctx.idx,ctx.n],
+    blank:true,wordHTML:gap,speak:()=>speak([Wd(w),I(ctx.lvl===2?"completa-silaba":"completa")]),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
 }
 function traceScreen(o){
   const st=student(); applyLook();
   const tol=TOLERANCE[st.helps.tol]||TOLERANCE.media;
-  const font=fontOf(st); const text=font.transform(o.text);
+  const font=fontOf(st); const text=o.layoutFn?o.text:font.transform(o.text);
   const escolar=st.cfg.font==="cursiva";
-  const ordered=escolar ? ESCOLAR.supports(text) : TRAZOS.supports(text);
+  const ordered=o.layoutFn ? true : escolar ? ESCOLAR.supports(text) : TRAZOS.supports(text);
   const showWord=o.word && (st.helps.picto || o.lvl>1 || o.blank);
-  h(`${topBar(esc(o.title),true)}
+  h(`${topBar((o.progress?"Escribir · ":"")+esc(o.title),true)}
   <div class="main trace-main">
     ${o.progress?dots(o.progress[0],o.progress[1]):""}
     <div class="trace-wrap">
       <div class="trace-side">
-        ${showWord?`<div class="side-card word-card ${o.bigModel?"big-model":""}">${pic(o.word.w,o.word.e)}<div class="word" style="font-family:${font.css}">${o.wordHTML||txt(st,o.word.w)}</div></div>`:""}
+        ${o.side!==undefined?o.side:showWord?`<div class="side-card word-card ${o.bigModel?"big-model":""}">${pic(o.word.w,o.word.e)}<div class="word" style="font-family:${font.css}">${o.wordHTML||txt(st,o.word.w)}</div></div>`:""}
         <div class="tools">
           <button class="btn primary" data-say>${ICON.speaker}<span>Escuchar</span></button>
           ${ordered&&!o.blank?`<button class="btn" data-demo>${ICON.play}<span>Ver cómo se hace</span></button>`:""}
@@ -1052,10 +1119,11 @@ function traceScreen(o){
     if(!o.nextLabel) setTimeout(()=>{ if(document.body.contains(nb)) nb.click(); },1800);
   };
   const opts={text,guide:app.querySelector("[data-guide]"),ink:app.querySelector("[data-ink]"),demo:app.querySelector("[data-demo-c]"),
-    tol,colors,onProgress,onSuccess,say:m=>tts(m),still:sens,fontCss:font.css,layout:escolar?ESCOLAR.layout:null,blank:!!o.blank};
+    tol,colors,onProgress,onSuccess,say:m=>tts(m),still:sens,fontCss:font.css,layout:o.layoutFn||(escolar?ESCOLAR.layout:null),blank:!!o.blank};
   const eng=ordered?createStrokeEngine(opts):createCoverageEngine(opts);
   startPending({area:"escritura",lvl:o.lvl,act:o.act,item:o.item||o.text,getTries:()=>eng.errors});
-  app.querySelector("[data-ink]").addEventListener("pointerdown",()=>{ if(S.pending) S.pending.touched=true; });
+  let touched=false;
+  app.querySelector("[data-ink]").addEventListener("pointerdown",()=>{ touched=true; if(S.pending) S.pending.touched=true; });
   bindBack(()=>{ cleanup(); o.onBack(); });
   app.querySelector("[data-say]").onclick=o.speak;
   app.querySelector("[data-clear]").onclick=()=>{ eng.clear(); msg.textContent=ordered?"Empieza en el punto verde y sigue la flecha":"Repasa la letra con el dedo"; };
@@ -1063,7 +1131,7 @@ function traceScreen(o){
   const dm=app.querySelector("[data-demo]"); if(dm) dm.onclick=()=>eng.demo();
   let first=true;
   const ro=new ResizeObserver(()=>{ const r=board.getBoundingClientRect(); if(r.width<10||r.height<10) return; eng.resize(r.width,r.height);
-    if(first){ first=false; setTimeout(()=>{ o.speak(); if(ordered&&o.autoDemo) setTimeout(()=>eng.demo(),900); },300); } });
+    if(first){ first=false; setTimeout(()=>{ o.speak(); if(ordered&&o.autoDemo) setTimeout(()=>{ if(!touched) eng.demo(); },900); },300); } });
   function cleanup(){ ro.disconnect(); eng.destroy(); }
   const _back=app.querySelector("[data-back]"); if(_back) _back.addEventListener("click",flushPending,true);
   document.fonts.load(`100px ${font.css}`).then(()=>ro.observe(board));

@@ -563,3 +563,10 @@ body.sensible .act-tile.rec{outline:2px solid #8a94a6}
 .sheet .sh-pic img{width:2cm;height:2cm}
 .sheet .sh-lines{display:flex;flex-direction:column;gap:.15cm;flex:1;min-width:0}
 .sheet .sh-svg{width:100%;height:auto;display:block}
+/* Escribir: tarjetas laterales */
+.ear-card .ear-big .ico{width:4.5em;height:4.5em;color:var(--primary)}
+.pre-card .pre-ico{font-size:4em;line-height:1;color:var(--primary)}
+.word-card.big-model .word.model-short{font-size:3.4em}
+.word-card.big-model .word.model-long{font-size:1.05em;line-height:1.5;white-space:normal;overflow-wrap:anywhere;max-width:100%}
+.word-card .word .esc-t{white-space:normal}
+.gap.gap-long{min-width:2.4em}

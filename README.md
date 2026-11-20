@@ -33,9 +33,10 @@ En todos los juegos, tocar una opción solo la marca (si es un dibujo, además l
 4. **Frases**: lee y toca el dibujo; ordena la frase; **las tijeras** (separa las palabras de una frase); ¿verdad o mentira? (más de 440 frases).
 
 **Escribir**
-1. **Letras**: abecedario con estrellas y trazado letra a letra.
-2. **Sílabas**: trazado y dictado con letras móviles.
-3. **Palabras**: trazado, dictado con letras móviles, **copia la palabra** (en la pauta, sin modelo punteado) y **completa la palabra** (escribe a mano la letra que falta).
+1. **Letras**: abecedario con estrellas y trazado letra a letra; **trazos de preescritura** (palos, caminos, toboganes, montañas, olas, castillo, puentes, cunas, bucles, ruedas, caracol y muelles); copia la letra; escribe la letra que oyes; ¿con qué letra empieza?
+2. **Sílabas**: repasa; dictado con letras móviles; copia la sílaba; escribe la sílaba que oyes; completa la palabra con la sílaba que falta.
+3. **Palabras**: repasa; dictado con letras móviles; copia la palabra (sin modelo punteado); completa la palabra; escribe la palabra que oyes; escribe lo que ves (solo el dibujo); ordena las letras.
+4. **Frases** (unas 150 frases cortas): repasa la frase; copia la frase; dictado de frases con palabras móviles; completa la frase.
 
 ### Trazado trazo a trazo
 - En **imprenta**, **mayúsculas** y **letra escolar enlazada**, cada letra tiene su punto de inicio, flecha de dirección, número de trazo y **modelo animado** («Ver cómo se hace»).

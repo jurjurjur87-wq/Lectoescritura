@@ -37,7 +37,7 @@ const GROUP_COLORS = ["#6C4AB6","#E0618A","#2E9E8F","#E8873D","#3C7DD9","#8BB43A
 
 const LEVELS = {
   lectura:[null,"Letras","Sílabas","Palabras","Frases"],
-  escritura:[null,"Letras","Sílabas","Palabras"],
+  escritura:[null,"Letras","Sílabas","Palabras","Frases"],
   escucha:[null,"Sílabas","Sonidos","Comprensión","Escenas","Juegos de sonidos"]
 };
 const FONTS = {
@@ -55,7 +55,7 @@ const ROUND = 6;
 // Actividades de cada nivel (en una ronda se van alternando)
 const ACTIVITIES = {
   lectura:  {1:["toca-letra"], 2:["toca-silaba","falta-silaba"], 3:["elige-palabra","forma-palabra","falta-letra","une-dibujo","intrusa-lee"], 4:["elige-dibujo","ordena-frase","tijeras","verdad-mentira"]},
-  escritura:{1:["trazo"], 2:["trazo","dictado"], 3:["trazo","dictado","copia","completa"]},
+  escritura:{1:["preescritura","copia","dictado-mano","empieza-letra"], 2:["trazo","dictado","copia","dictado-mano","completa"], 3:["trazo","dictado","copia","completa","dictado-mano","escribe-dibujo","ordena-letras"], 4:["trazo","copia","dictado","completa-frase"]},
   escucha:  {1:["contar-silabas","mas-larga","une-silabas","cuenta-palabras","mas-corta"], 2:["sonido-en","empieza-por","termina-en","intrusa","suena-igual"], 3:["elige-escena"], 4:["monta-escena"], 5:["rima","quita-silaba","da-la-vuelta","encadenadas","anade-silaba"]}
 };
 const ACT_NAMES = {"toca-letra":"Escucha y toca la letra","toca-silaba":"Escucha y toca la sílaba","falta-silaba":"¿Qué sílaba falta?",
@@ -102,14 +102,34 @@ const CATALOG = {
   ],
   escritura:[
     {lvl:1,act:"trazo",name:"Repasa las letras",icon:"✏️"},
+    {lvl:1,act:"preescritura",name:"Trazos de preescritura",icon:"〰️"},
+    {lvl:1,act:"copia",name:"Copia la letra",icon:"🔠"},
+    {lvl:1,act:"dictado-mano",name:"Escribe la letra que oyes",icon:"👂"},
+    {lvl:1,act:"empieza-letra",name:"¿Con qué letra empieza?",icon:"🅰️"},
     {lvl:2,act:"trazo",name:"Repasa sílabas",icon:"🖍️"},
     {lvl:2,act:"dictado",name:"Dictado de sílabas",icon:"🎧"},
+    {lvl:2,act:"copia",name:"Copia la sílaba",icon:"📄"},
+    {lvl:2,act:"dictado-mano",name:"Escribe la sílaba que oyes",icon:"🗣️"},
+    {lvl:2,act:"completa",name:"Completa con la sílaba",icon:"🧩"},
     {lvl:3,act:"trazo",name:"Repasa palabras",icon:"🖊️"},
     {lvl:3,act:"dictado",name:"Dictado de palabras",icon:"📝"},
     {lvl:3,act:"copia",name:"Copia la palabra",icon:"📋"},
-    {lvl:3,act:"completa",name:"Completa la palabra",icon:"🔤"}
+    {lvl:3,act:"completa",name:"Completa la palabra",icon:"🔤"},
+    {lvl:3,act:"dictado-mano",name:"Escribe la palabra que oyes",icon:"🎙️"},
+    {lvl:3,act:"escribe-dibujo",name:"Escribe lo que ves",icon:"👀"},
+    {lvl:3,act:"ordena-letras",name:"Ordena las letras",icon:"🔀"},
+    {lvl:4,act:"trazo",name:"Repasa la frase",icon:"✒️"},
+    {lvl:4,act:"copia",name:"Copia la frase",icon:"📃"},
+    {lvl:4,act:"dictado",name:"Dictado de frases",icon:"📢"},
+    {lvl:4,act:"completa-frase",name:"Completa la frase",icon:"🔎"}
   ]
 };
+// Frases cortas para escribir: las del banco propio y las de 2-3 palabras del banco general
+const SHORT_PHRASES = (()=>{ const seen=new Set(), out=[];
+  [...BANCO_FRASES_CORTAS.trim().split("\n").map(l=>{ const [t,k]=l.split("|"); return {t:t.trim(),k:k.trim()}; }),
+   ...PHRASES.filter(p=>{ const c=p.t.replace(/[.,¿?¡!]/g,""); return c.split(" ").length<=3 && c.length<=14; })]
+  .forEach(p=>{ if(!seen.has(p.t)){ seen.add(p.t); const w=WORDS.find(x=>x.w===p.k); out.push({t:p.t,k:p.k,e:p.e||(w&&w.e)||"📝"}); } });
+  return out; })();
 // Frases de verdad o mentira, a partir del banco
 const VERDAD = BANCO_VERDAD.trim().split("\n").flatMap(l=>{ const [k,suj,v,f]=l.split("|");
   return [...v.split(";").map(p=>({k,t:`${suj} ${p}.`,ok:true})),...f.split(";").map(p=>({k,t:`${suj} ${p}.`,ok:false}))]; });

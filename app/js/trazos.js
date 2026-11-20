@@ -78,6 +78,7 @@ const TRAZOS = (() => {
 
   const ACC = { "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u", "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U" };
   function glyph(ch) {
+    if (ch === " ") return { w: 30, s: [] };                         // espacio entre palabras
     if (low[ch]) return low[ch];
     if (up[ch]) return up[ch];
     if (ch === "ü" || ch === "Ü") {                                 // diéresis: dos puntos
@@ -137,10 +138,15 @@ const ESCOLAR = (() => {
     const keep = base === "i" ? [] : (g.x || []);                         // la í lleva tilde y no punto
     return Object.assign({}, g, { x: [...keep, [[cx + 7, 30], [cx - 4, 44]]] });
   }
-  const supports = t => [...t].every(c => glyph(c));
+  const supports = t => [...t].every(c => c === " " || glyph(c));
   function layout(text) {
-    const mains = [], extras = []; let cur = [], end = null, nextX = 0;
+    let mains = [], extras = []; let cur = [], end = null, nextX = 0; const out = [];
+    const flushWord = () => { if (cur.length) mains.push(cur); cur = [];
+      out.push(...mains.filter(m => m.length).map(m => ({ pts: m, letter: 0 })), ...extras); mains = []; extras = []; };
     [...text].forEach((ch, i) => {
+      if (ch === " ") {                                                  // entre palabras: se levanta el lápiz
+        const lastX = end ? end[0] : nextX; flushWord(); end = null; nextX = lastX + 42; return;
+      }
       const g = glyph(ch); if (!g) return;
       let ox, from = 0;
       if (!end) ox = nextX - g.m[0][0];
@@ -158,8 +164,8 @@ const ESCOLAR = (() => {
       end = cur[cur.length - 1];
       if (g.lift) { mains.push(cur); cur = []; end = null; nextX = Math.max(...g.m.map(p => p[0] + ox), ...(g.x || []).flat().map(p => p[0] + ox)) + 6; }
     });
-    if (cur.length) mains.push(cur);
-    const strokes = [...mains.filter(m => m.length).map(m => ({ pts: m, letter: 0 })), ...extras];
+    flushWord();
+    const strokes = out;
     let minX = Infinity, maxX = -Infinity, minY = 0, maxY = 140;
     strokes.forEach(s => s.pts.forEach(([x, y]) => { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); }));
     return { strokes, minX, maxX, minY, maxY };
@@ -182,6 +188,34 @@ const ESCOLAR = (() => {
     }).join("") + `</span>`;
   }
   return { glyph, supports, layout, svgWord, html };
+})();
+
+/* =========================================================
+   PREESCRITURA: caminos para repasar antes de las letras
+   (coordenadas de la pauta: 0 arriba, 100 línea base, 140 abajo)
+   ========================================================= */
+const PRE = (() => {
+  const R = (a, b, n, f) => Array.from({ length: n + 1 }, (_, i) => f(a + (b - a) * i / n));
+  const P = {
+    verticales: { name: "Palos", icon: "｜", s: [0, 1, 2, 3, 4, 5].map(i => [[20 + i * 60, 20], [20 + i * 60, 100]]) },
+    horizontales: { name: "Caminos", icon: "—", s: [30, 65, 100].map(y => [[0, y], [340, y]]) },
+    diagonales: { name: "Toboganes", icon: "⟋", s: [0, 1, 2, 3, 4].map(i => [[10 + i * 70, 20], [60 + i * 70, 100]]) },
+    picos: { name: "Montañas", icon: "⋀", s: [R(0, 8, 8, t => [t * 50, t % 2 ? 25 : 100])] },
+    ondas: { name: "Olas", icon: "〰", s: [R(0, 1, 90, t => [t * 400, 62 - 30 * Math.sin(t * Math.PI * 6)])] },
+    almenas: { name: "Castillo", icon: "⊓", s: [[[0, 100], [0, 40], [45, 40], [45, 100], [90, 100], [90, 40], [135, 40], [135, 100], [180, 100], [180, 40], [225, 40], [225, 100], [270, 100], [270, 40], [315, 40], [315, 100]]] },
+    puentes: { name: "Puentes", icon: "⌒", s: [R(0, 1, 90, t => { const k = t * 4, f = k - Math.floor(Math.min(k, 3.999)); return [t * 360, 100 - 70 * Math.sin(Math.PI * f)]; })] },
+    cunas: { name: "Cunas", icon: "◡", s: [R(0, 1, 90, t => { const k = t * 4, f = k - Math.floor(Math.min(k, 3.999)); return [t * 360, 30 + 70 * Math.sin(Math.PI * f)]; })] },
+    bucles: { name: "Bucles", icon: "ℓ", s: [R(0, 1, 140, t => { const a = t * Math.PI * 2 * 4; return [10 + t * 300 - 22 * Math.sin(a), 70 - 30 * Math.sin(a + Math.PI / 2) * -1]; })] },
+    circulos: { name: "Ruedas", icon: "○", s: [0, 1, 2, 3].map(i => R(0, 1, 40, t => { const a = -Math.PI / 2 - t * Math.PI * 2; return [50 + i * 90 + 32 * Math.cos(a), 62 + 32 * Math.sin(a)]; })) },
+    espiral: { name: "Caracol", icon: "🌀", s: [R(0, 1, 120, t => { const a = t * Math.PI * 2 * 2.6; const r = 4 + t * 44; return [70 + r * Math.cos(-a), 62 + r * Math.sin(-a)]; })] },
+    muelles: { name: "Muelles", icon: "➰", s: [R(0, 1, 140, t => { const a = t * Math.PI * 2 * 5; return [20 + t * 320 + 18 * Math.cos(a + Math.PI), 62 + 26 * Math.sin(a + Math.PI) * -1]; })] }
+  };
+  function layout(id) {
+    const p = P[id]; const strokes = p.s.map(pts => ({ pts: pts.map(([x, y]) => [x, y]), letter: 0 }));
+    let minX = Infinity, maxX = -Infinity; strokes.forEach(s => s.pts.forEach(([x]) => { minX = Math.min(minX, x); maxX = Math.max(maxX, x); }));
+    return { strokes, minX, maxX, minY: 0, maxY: 140 };
+  }
+  return { list: Object.keys(P), info: id => P[id], layout };
 })();
 
 /* =========================================================
