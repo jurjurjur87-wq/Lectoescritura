@@ -506,3 +506,17 @@ button.pg{background:#fff;cursor:pointer;font:inherit} button.pg:hover{border-co
 .oral-n{font-weight:700;color:var(--muted)}
 .oral-t{font-size:2em}
 .opt.oral.sel{border-color:var(--primary);background:#FAF8FF}
+
+/* Catálogo de actividades */
+.acts{display:grid;grid-template-columns:repeat(auto-fill,minmax(10.5em,1fr));gap:.8em;max-width:76em;margin:0 auto;width:100%}
+.act-tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35em;min-height:9.5em;padding:2.1em .6em .8em;font-size:1.05em;text-align:center;border-top:6px solid var(--lvc,var(--accent))}
+.act-tab{position:absolute;top:0;left:50%;transform:translate(-50%,-1px);background:var(--lvc,var(--accent));color:#fff;font-size:.68em;font-weight:800;padding:.2em .9em .25em;border-radius:0 0 .8em .8em;white-space:nowrap;letter-spacing:.02em}
+.act-ico{font-size:2.3em;line-height:1}
+.act-name{font-weight:800;line-height:1.15}
+.act-rec{position:absolute;top:.35em;right:.45em;color:#f5b301}
+.act-rec .ico{width:1.2em;height:1.2em}
+.act-tile.rec{box-shadow:0 0 0 3px #f5b30155,0 4px 14px #0001}
+.act-tile.lvl1{--lvc:#4f8ef7}.act-tile.lvl2{--lvc:#2bb673}.act-tile.lvl3{--lvc:#f28c28}.act-tile.lvl4{--lvc:#9b59d0}.act-tile.lvl5{--lvc:#e2557a}
+body.sensible .act-tile{--lvc:#8a94a6;box-shadow:none}
+body.sensible .act-tile.rec{outline:2px solid #8a94a6}
+@media (max-width:600px){.acts{grid-template-columns:1fr 1fr;gap:.5em}.act-tile{min-height:8em;font-size:.95em}}

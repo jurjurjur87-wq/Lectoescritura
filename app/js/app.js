@@ -287,13 +287,13 @@ function screenStudents(){
 function screenStudentHome(){
   flushPending(); S.screenSeq=(S.screenSeq||0)+1;
   const st=student(); applyLook();
-  const lr=LEVELS.lectura[st.cfg.lectura], es=LEVELS.escritura[st.cfg.escritura], eu=LEVELS.escucha[lvlOf(st,"escucha")];
+  const cnt=a=>`${CATALOG[a].length} actividades`;
   h(`${topBar("¡Hola!",true)}
   <div class="main center">
     <div class="menu three">
-      <button class="tile menu-tile listen" data-listen><span class="badge">${eu}</span><span class="ico-circle">${ICON.ear}</span>Escuchar</button>
-      <button class="tile menu-tile read" data-read><span class="badge">${lr}</span><span class="ico-circle">${ICON.book}</span>Leer</button>
-      <button class="tile menu-tile write" data-write><span class="badge">${es}</span><span class="ico-circle">${ICON.pencil}</span>Escribir</button>
+      <button class="tile menu-tile listen" data-listen><span class="badge">${cnt("escucha")}</span><span class="ico-circle">${ICON.ear}</span>Escuchar</button>
+      <button class="tile menu-tile read" data-read><span class="badge">${cnt("lectura")}</span><span class="ico-circle">${ICON.book}</span>Leer</button>
+      <button class="tile menu-tile write" data-write><span class="badge">${cnt("escritura")}</span><span class="ico-circle">${ICON.pencil}</span>Escribir</button>
     </div>
     ${S.demo?`<div class="panel demo-bar">
       <b>Demostración</b>
@@ -304,14 +304,40 @@ function screenStudentHome(){
     </div>`:""}
   </div>`);
   bindBack(screenStudents);
-  app.querySelector("[data-read]").onclick=startReading;
-  app.querySelector("[data-listen]").onclick=startListening;
-  app.querySelector("[data-write]").onclick=startWriting;
+  app.querySelector("[data-read]").onclick=()=>screenArea("lectura");
+  app.querySelector("[data-listen]").onclick=()=>screenArea("escucha");
+  app.querySelector("[data-write]").onclick=()=>screenArea("escritura");
   if(S.demo){
     const upd=()=>{ S.demoLevels={lectura:+app.querySelector("[data-dl]").value,escritura:+app.querySelector("[data-de]").value,escucha:+app.querySelector("[data-du]").value,font:app.querySelector("[data-df]").value}; screenStudentHome(); };
     ["[data-dl]","[data-de]","[data-du]","[data-df]"].forEach(q=>app.querySelector(q).onchange=upd);
   }
 }
+
+/* ---------- Catálogo de actividades de un área ---------- */
+const AREA_TITLE={escucha:"Escuchar",lectura:"Leer",escritura:"Escribir"};
+function screenArea(area){
+  flushPending(); S.screenSeq=(S.screenSeq||0)+1; S.area=area;
+  const st=student(); applyLook();
+  const my=lvlOf(st,area);
+  h(`${topBar(AREA_TITLE[area],true)}
+  <div class="main">
+    <div class="acts">${CATALOG[area].map((e,i)=>`
+      <button class="tile act-tile lvl${e.lvl} ${e.lvl===my?"rec":""}" data-a="${i}">
+        <span class="act-tab">${esc(LEVELS[area][e.lvl])}</span>
+        ${e.lvl===my?`<span class="act-rec" title="Su nivel">${ICON.star}</span>`:""}
+        <span class="act-ico emoji">${e.icon}</span>
+        <span class="act-name">${esc(e.name)}</span>
+      </button>`).join("")}</div>
+  </div>`);
+  bindBack(screenStudentHome);
+  app.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>startActivity(area,CATALOG[area][+b.dataset.a]));
+}
+function startActivity(area,e){
+  const st=student(); S.area=area;
+  if(area==="escritura"&&e.lvl===1) return screenAlphabet();
+  runRound(area,e.lvl,buildItems(area,e.lvl,st,ROUND,e.act),()=>startActivity(area,e),e.name);
+}
+function backToArea(){ if(S.area) screenArea(S.area); else screenStudentHome(); }
 
 /* ---------- Banco de ejercicios según las letras activas ---------- */
 function pools(st){
@@ -324,8 +350,8 @@ function pools(st){
 }
 const RECENT=[];   // lo que ha salido hace poco (en este equipo), para no repetirlo enseguida
 const keyOf=x=>typeof x==="string"?x:(x.w||x.t||x.key||JSON.stringify(x));
-function buildItems(area,lvl,st,n=ROUND){
-  const P=pools(st); const acts=ACTIVITIES[area][lvl]; const items=[];
+function buildItems(area,lvl,st,n=ROUND,only){
+  const P=pools(st); const acts=only?[only]:ACTIVITIES[area][lvl]; const items=[];
   const pickN=(arr,m)=>{ const fresh=arr.filter(x=>!RECENT.includes(keyOf(x))); const src=fresh.length>=Math.max(m,4)?fresh:arr;
     const out=[]; let bag=[]; while(out.length<m){ if(!bag.length) bag=shuffle(src); const it=bag.pop(); out.push(it); RECENT.push(keyOf(it)); if(RECENT.length>60) RECENT.shift(); } return out; };
   for(let i=0;i<n;i++){
@@ -368,10 +394,10 @@ function startWriting(){
   if(st.cfg.escritura===1) return screenAlphabet();
   runRound("escritura",st.cfg.escritura,buildItems("escritura",st.cfg.escritura,st),startWriting);
 }
-function runRound(area,lvl,items,again){
+function runRound(area,lvl,items,again,title){
   let idx=0, good=0; const token=S.screenSeq;
   const next=()=>{
-    if(idx>=items.length) return roundEnd(area,good,items.length,again);
+    if(idx>=items.length) return roundEnd(area,good,items.length,again,title);
     const it=items[idx];
     const done=firstTry=>{ if(S.screenSeq!==token || !student()) return; if(firstTry) good++; idx++; next(); };
     const ctx={area,lvl,idx,n:items.length,done};
@@ -387,26 +413,26 @@ function runRound(area,lvl,items,again){
   };
   next();
 }
-function roundEnd(area,good,total,again){
+function roundEnd(area,good,total,again,title){
   const st=student(); applyLook();
   const stars=good===total?3:good>=total*.6?2:1;
   celebrate(); praise(st.name);
-  h(`${topBar({lectura:"Leer",escritura:"Escribir",escucha:"Escuchar"}[area],true)}
+  h(`${topBar(AREA_TITLE[area]+(title?" · "+esc(title):""),true)}
   <div class="main center">
     <div class="hero">
       <div class="stars">${[0,1,2].map(i=>`<span class="${i<stars?"on":""}">${ICON.star}</span>`).join("")}</div>
       <h2>¡Muy bien, ${esc(st.name)}!</h2><p>${good} de ${total} a la primera</p></div>
     <div class="row" style="justify-content:center;gap:1.2em">
       <button class="btn primary big-btn" data-again>${ICON.again} Otra vez</button>
-      <button class="btn big-btn" data-home>${ICON.home} Menú</button>
+      <button class="btn big-btn" data-home>${ICON.home} Actividades</button>
     </div>
   </div>`);
-  bindBack(screenStudentHome);
+  bindBack(backToArea);
   app.querySelector("[data-again]").onclick=again;
-  app.querySelector("[data-home]").onclick=screenStudentHome;
+  app.querySelector("[data-home]").onclick=backToArea;
 }
 function actHeader(ctx,title){
-  return `${topBar({lectura:"Leer",escritura:"Escribir",escucha:"Escuchar"}[ctx.area]+" · "+esc(title),true)}`;
+  return `${topBar(AREA_TITLE[ctx.area]+" · "+esc(title),true)}`;
 }
 /* Elección entre 3 opciones (base de varias actividades) */
 function choiceScreen(ctx,{title,prompt,options,correct,fontCss,emo,onSay,sayKey,four,wide,two,record:rec}){
@@ -417,7 +443,7 @@ function choiceScreen(ctx,{title,prompt,options,correct,fontCss,emo,onSay,sayKey
     <div class="prompt">${prompt}</div>
     <div class="options ${four?"four":""} ${wide?"wide":""} ${two?"two-opt":""}">${options.map((o,i)=>`<button class="opt ${emo?"emo":""}" data-i="${i}" style="${fontCss?`font-family:${fontCss}`:""}">${o.html}</button>`).join("")}</div>
   </div>`);
-  bindBack(screenStudentHome);
+  bindBack(backToArea);
   let tries=0, locked=false; const t0=performance.now();
   const sb=app.querySelector("[data-say]"); if(sb) sb.onclick=onSay;
   if(onSay) setTimeout(onSay,350);
@@ -439,7 +465,7 @@ function actChooseSound(it,ctx){
   const pool=isL?P.letters:P.syl;
   const opts=shuffle([it.key,...shuffle(pool.filter(x=>x!==it.key)).slice(0,2)]);
   const w=isL?wordOf(LETTER_WORD[it.key]):null;
-  choiceScreen(ctx,{title:LEVELS.lectura[ctx.lvl],
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">${isL?"Escucha y toca la letra":"Escucha y toca la sílaba"}</span>${isL&&st.helps.picto&&w?pic(w.w,w.e):""}`,
     options:opts.map(x=>({html:txt(st,x),ok:x===it.key})), fontCss:fontOf(st).css,
     onSay:()=>isL?say(`¿Dónde está la ${LETTER_NAMES[it.key]}?`,"letra:"+it.key):say(it.key,"silaba:"+it.key),
@@ -448,7 +474,7 @@ function actChooseSound(it,ctx){
 function actChooseWord(it,ctx){
   const st=student(); const P=pools(st);
   const opts=shuffle([it.word,...shuffle(P.words.filter(x=>x.w!==it.word.w)).slice(0,2)]);
-  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`${pic(it.word.w,it.word.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button>`,
     options:opts.map(x=>({html:txt(st,x.w),ok:x===it.word})), fontCss:fontOf(st).css,
     onSay:()=>say(it.word.w,"palabra:"+it.word.w),
@@ -457,7 +483,7 @@ function actChooseWord(it,ctx){
 function actChoosePicture(it,ctx){
   const st=student(); const P=pools(st);
   const opts=shuffle([it.phrase,...shuffle(P.phr.filter(x=>x.k!==it.phrase.k)).slice(0,2)]);
-  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<span class="phrase" style="font-family:${fontOf(st).css}">${txt(st,it.phrase.t)}</span><button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button>`,
     options:opts.map(x=>({html:pic(x.k,x.e,"emoji in-opt"),ok:x===it.phrase})), emo:true,
     onSay:null,
@@ -471,7 +497,7 @@ function actMissing(it,ctx){
   else { parts=[...w.w]; const cand=parts.map((c,i)=>i).filter(i=>/[a-zñ]/.test(parts[i])); hole=pick(cand); answer=parts[hole]; pool=P.letters; }
   const opts=shuffle([answer,...shuffle(pool.filter(x=>x!==answer&&stripAcc(x)!==stripAcc(answer))).slice(0,2)]);
   const shown=parts.map((p,i)=>i===hole?`<span class="hole">${"&nbsp;".repeat(Math.max(2,p.length*2))}</span>`:txt(st,p)).join("");
-  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`${pic(w.w,w.e)}<span class="phrase" style="font-family:${fontOf(st).css}">${shown}</span><button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button>`,
     options:opts.map(x=>({html:txt(st,x),ok:x===answer})), fontCss:fontOf(st).css,
     onSay:()=>say(w.w,"palabra:"+w.w),
@@ -480,7 +506,7 @@ function actMissing(it,ctx){
 /* Construir tocando piezas en orden: sílabas → palabra, palabras → frase, letras → dictado */
 function actBuild(it,ctx){
   const st=student(); applyLook(); const fcss=fontOf(st).css; const P=pools(st);
-  let target,extra,promptHTML,sayFn,title=ACT_NAMES[it.act],joiner="";
+  let target,extra,promptHTML,sayFn,title=actName(ctx.area,ctx.lvl,it.act),joiner="";
   if(it.act==="forma-palabra"){
     target=[...it.word.s]; extra=shuffle(P.syl.filter(x=>!target.includes(x))).slice(0,1);
     promptHTML=`${pic(it.word.w,it.word.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button>`;
@@ -505,7 +531,7 @@ function actBuild(it,ctx){
     <div class="slots ${it.act==="ordena-frase"?"words":""}" style="font-family:${fcss}" data-slots></div>
     <div class="tiles" style="font-family:${fcss}" data-tiles></div>
   </div>`);
-  bindBack(screenStudentHome);
+  bindBack(backToArea);
   app.querySelector("[data-say]").onclick=sayFn; setTimeout(sayFn,350);
   const sEl=app.querySelector("[data-slots]"), tEl=app.querySelector("[data-tiles]");
   function paint(){
@@ -540,7 +566,7 @@ const recFirst=(ctx,it)=>(tries,ms)=>record(ctx.area,ctx.lvl,it.key,tries,tries=
 function actCountSyl(it,ctx){
   const w=it.word, n=w.s.length;
   const clap=k=>`<span class="claps">${Array.from({length:k},()=>`<i>${ICON.clap}</i>`).join("")}</span><b>${k}</b>`;
-  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`${pic(w.w,w.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">¿Cuántas palmadas tiene?</span>`,
     options:[1,2,3,4].map(k=>({html:clap(k),ok:k===n})), four:true,
     onSay:()=>say(w.w,"palabra:"+w.w), record:recFirst(ctx,it)});
@@ -558,7 +584,7 @@ function actSound(it,ctx){
   it.key=(start?"empieza:":"suena:")+target;
   const opts=shuffle([good,...bad]);
   const q=start?`¿Qué palabra empieza por ${target}?`:`¿Qué palabra tiene ${target}?`;
-  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">${start?"¿Cuál empieza por":"¿Cuál tiene"} <b class="snd">«${esc(target)}»</b>?</span>`,
     options:opts.map(w=>({html:`${pic(w.w,w.e,"emoji in-opt")}<span class="opt-say" data-word="${esc(w.w)}" role="button" aria-label="Escuchar ${esc(w.w)}">${ICON.speaker}</span>`,ok:w===good})), emo:true,
     onSay:()=>{ say(q); }, record:recFirst(ctx,it)});
@@ -576,7 +602,7 @@ function bindOptSay(){ app.querySelectorAll(".opt-say").forEach(b=>b.addEventLis
 function actLonger(it,ctx){
   let a,b; for(let i=0;i<50;i++){ [a,b]=shuffle(WORDS).slice(0,2); if(Math.abs(a.s.length-b.s.length)>=1) break; }
   const good=a.s.length>b.s.length?a:b; it.key="larga:"+good.w;
-  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Cuál tiene más palmadas?</span>`,
     options:shuffle([a,b]).map(w=>({html:picOpt(w),ok:w===good})), emo:true, two:true,
     onSay:()=>say("¿Cuál tiene más palmadas?"), record:recFirst(ctx,it)});
@@ -585,7 +611,7 @@ function actLonger(it,ctx){
 // Une las sílabas: se oyen separadas y se elige el dibujo
 function actBlend(it,ctx){
   const w=it.word; const others=shuffle(WORDS.filter(x=>x!==w&&x.s[0]!==w.s[0])).slice(0,2);
-  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Escucha los trocitos y toca el dibujo</span>`,
     options:shuffle([w,...others]).map(x=>({html:pic(x.w,x.e,"emoji in-opt"),ok:x===w})), emo:true,
     onSay:()=>ttsSeq(w.s), record:recFirst(ctx,it)});
@@ -594,7 +620,7 @@ function actBlend(it,ctx){
 function actCountWords(it,ctx){
   const t=it.phrase.t, n=t.replace(/[.,]/g,"").split(" ").length;
   const opts=[...new Set([n,n-1,n+1,n+2].filter(x=>x>=1))].slice(0,4).sort((a,b)=>a-b);
-  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`${pic(it.phrase.k,it.phrase.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">¿Cuántas palabras tiene la frase?</span>`,
     options:opts.map(k=>({html:clapsHTML(k),ok:k===n})), four:opts.length===4,
     onSay:()=>ttsSeq(t.replace(/[.,]/g,"").split(" "),250), record:recFirst(ctx,it)});
@@ -606,7 +632,7 @@ function actEnds(it,ctx){
     const cand=WORDS.filter(w=>w!==good&&stripAcc(w.s[w.s.length-1])!==target&&!stripAcc(w.w).endsWith(target));
     if(cand.length>=2){ bad=shuffle(cand).slice(0,2); break; } }
   it.key="termina:"+target;
-  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Cuál termina en <b class="snd">«${esc(target)}»</b>?</span>`,
     options:shuffle([good,...bad]).map(w=>({html:picOpt(w),ok:w===good})), emo:true,
     onSay:()=>say(`¿Qué palabra termina en ${target}?`), record:recFirst(ctx,it)});
@@ -619,7 +645,7 @@ function actOddOne(it,ctx){
   const k=pick(keys); const three=shuffle(groups[k]).slice(0,3);
   const odd=pick(WORDS.filter(w=>stripAcc(w.s[0])!==k&&stripAcc(w.w)[0]!==k[0]));
   it.key="intrusa:"+k;
-  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Tres empiezan igual. ¿Cuál es la diferente?</span>`,
     options:shuffle([...three,odd]).map(w=>({html:picOpt(w),ok:w===odd})), emo:true, four:true,
     onSay:()=>say("Tres palabras empiezan igual. ¿Cuál es la diferente?"), record:recFirst(ctx,it)});
@@ -633,7 +659,7 @@ function actRhyme(it,ctx){
   const end2=x=>stripAcc(x).slice(-2);
   const bad=shuffle(WORDS.filter(w=>rimaKey(w.w)!==k&&end2(w.w)!==end2(base.w))).slice(0,2);
   it.key="rima:"+base.w;
-  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`${pic(base.w,base.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Qué palabra rima con <b class="snd">${esc(base.w)}</b>?</span>`,
     options:shuffle([good,...bad]).map(w=>({html:picOpt(w),ok:w===good})), emo:true,
     onSay:()=>say(`¿Qué palabra rima con ${base.w}?`), record:recFirst(ctx,it)});
@@ -642,14 +668,14 @@ function actRhyme(it,ctx){
 /* Opciones que se escuchan: tocar suena y marca; «Comprobar» responde */
 function oralChoice(ctx,it,{prompt,onSay,options}){
   const st=student(); applyLook();
-  h(`${actHeader(ctx,ACT_NAMES[it.act])}
+  h(`${actHeader(ctx,actName(ctx.area,ctx.lvl,it.act))}
   <div class="main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt">${prompt}</div>
     <div class="options">${options.map((o,i)=>`<button class="opt oral" data-i="${i}"><span class="oral-ico">${ICON.speaker}</span><span class="oral-n">${["A","B","C","D"][i]}</span><span class="oral-t">${txt(st,o.label)}</span></button>`).join("")}</div>
     <div class="row" style="justify-content:center;margin-top:1.2em"><button class="btn ok big-btn" data-ok>${ICON.check} Comprobar</button></div>
   </div>`);
-  bindBack(screenStudentHome);
+  bindBack(backToArea);
   let sel=-1, tries=0, locked=false; const t0=performance.now();
   app.querySelector("[data-say]").onclick=onSay; setTimeout(onSay,350);
   const btns=[...app.querySelectorAll(".opt.oral")];
@@ -689,7 +715,7 @@ function actChooseScene(it,ctx){
   const altS=pick(SCENE_SUBJ.filter(x=>x.k!==sc.s.k&&sc.a.who.includes(x.k)));
   const altO=pick(sc.a.objs.filter(x=>x.k!==sc.o.k));
   const opts=shuffle([{sc,ok:true},{sc:{s:altS,a:sc.a,o:sc.o}},{sc:{s:sc.s,a:sc.a,o:altO}}]);
-  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">Escucha y toca el dibujo</span>`,
     options:opts.map(o=>({html:sceneHTML(o.sc),ok:!!o.ok})), emo:true, wide:true,
     onSay:()=>say(txt,"frase:"+txt), record:recFirst(ctx,it)});
@@ -701,14 +727,14 @@ function actBuildScene(it,ctx){
   const target=[{k:sc.s.k,e:sc.s.e},{k:sc.a.k,e:sc.a.e},{k:sc.o.k,e:sc.o.e}];
   const tiles=shuffle([...target,{k:altS.k,e:altS.e},{k:altO.k,e:altO.e}]);
   const slots=[null,null,null]; let tries=0, locked=false; const t0=performance.now();
-  h(`${actHeader(ctx,ACT_NAMES[it.act])}
+  h(`${actHeader(ctx,actName(ctx.area,ctx.lvl,it.act))}
   <div class="main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt"><button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">Escucha y pon los dibujos en orden</span></div>
     <div class="slots scene-slots" data-slots></div>
     <div class="tiles scene-tiles" data-tiles></div>
   </div>`);
-  bindBack(screenStudentHome);
+  bindBack(backToArea);
   const sayIt=()=>say(txt,"frase:"+txt); app.querySelector("[data-say]").onclick=sayIt; setTimeout(sayIt,350);
   const sEl=app.querySelector("[data-slots]"), tEl=app.querySelector("[data-tiles]");
   function paint(){
@@ -734,14 +760,14 @@ function actScissors(it,ctx){
   const letters=[]; const bounds=new Set(); let pos=0;
   words.forEach((w,i)=>{ [...w].forEach(c=>letters.push(c)); pos+=[...w].length; if(i<words.length-1) bounds.add(pos); });
   const cuts=new Set(); let tries=0, locked=false; const t0=performance.now();
-  h(`${actHeader(ctx,ACT_NAMES[it.act])}
+  h(`${actHeader(ctx,actName(ctx.area,ctx.lvl,it.act))}
   <div class="main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt">${pic(it.phrase.k,it.phrase.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">Toca entre las letras para separar las palabras</span></div>
     <div class="scissors" style="font-family:${fcss}" data-sc></div>
     <div class="row" style="justify-content:center;margin-top:1.2em"><button class="btn ok big-btn" data-ok>${ICON.check} Ya está</button></div>
   </div>`);
-  bindBack(screenStudentHome);
+  bindBack(backToArea);
   const sayIt=()=>say(it.phrase.t,"frase:"+it.phrase.t); app.querySelector("[data-say]").onclick=sayIt;
   const el=app.querySelector("[data-sc]");
   function paint(bad){
@@ -781,7 +807,7 @@ function screenAlphabet(){
       </button>`).join("")}</div>
     <p class="hint" style="margin-top:1em">${Object.keys(done).filter(l=>en.has(l)).length} de ${en.size} letras practicadas</p>
   </div>`);
-  bindBack(screenStudentHome);
+  bindBack(backToArea);
   app.querySelectorAll("[data-l]").forEach(b=>b.onclick=()=>traceLetter(b.dataset.l));
 }
 function traceLetter(l){
@@ -793,9 +819,9 @@ function traceLetter(l){
 }
 function actTrace(it,ctx){
   const isWord=ctx.lvl===3;
-  traceScreen({text:it.key,title:LEVELS.escritura[ctx.lvl],word:it.word||null,lvl:ctx.lvl,act:"trazo",progress:[ctx.idx,ctx.n],
+  traceScreen({text:it.key,title:actName("escritura",ctx.lvl,"trazo"),word:it.word||null,lvl:ctx.lvl,act:"trazo",progress:[ctx.idx,ctx.n],
     speak:()=>say(it.key,(isWord?"palabra:":"silaba:")+it.key),
-    onBack:screenStudentHome,onDone:firstTry=>ctx.done(firstTry)});
+    onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
 }
 function traceScreen(o){
   const st=student(); applyLook();
@@ -1147,7 +1173,7 @@ function studentProgress(body,s){
   <div class="panel">${heat(A.cellL,"Reconocimiento de letras (lectura)")}${heat(A.cellE,"Trazado de letras (escritura)")}${heatLegend}</div>
   ${A.hardest.length?`<div class="panel"><h3>Lo que más le cuesta (sílabas, palabras y frases)</h3>${A.hardest.map(x=>`<span class="chip pct" style="background:${pctColor(x.v)}">${{lectura:"Lectura",escritura:"Escritura",escucha:"Escuchar"}[x.area]} · ${esc(x.item)} · ${x.v} %</span>`).join(" ")}</div>`:""}
   <div class="panel"><h3>Actividad reciente</h3>${recs.length?`<div class="tw"><table><thead><tr><th>Fecha</th><th>Área</th><th>Actividad</th><th>Ejercicio</th><th>Intentos</th><th>Resultado</th></tr></thead><tbody>
-    ${recs.slice(-15).reverse().map(r=>`<tr><td>${new Date(r.t).toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</td><td>${{lectura:"Lectura",escritura:"Escritura",escucha:"Escuchar"}[r.area]}</td><td>${ACT_NAMES[r.act]||LEVELS[r.area][r.lvl]}</td><td><b>${esc(r.item)}</b></td><td>${r.tries}</td><td>${r.fail?`<span class="chip pct" style="background:#F8D3D1">Sin terminar</span>`:r.acc+" %"}</td></tr>`).join("")}
+    ${recs.slice(-15).reverse().map(r=>`<tr><td>${new Date(r.t).toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</td><td>${{lectura:"Lectura",escritura:"Escritura",escucha:"Escuchar"}[r.area]}</td><td>${actName(r.area,r.lvl,r.act)}</td><td><b>${esc(r.item)}</b></td><td>${r.tries}</td><td>${r.fail?`<span class="chip pct" style="background:#F8D3D1">Sin terminar</span>`:r.acc+" %"}</td></tr>`).join("")}
   </tbody></table></div>`:`<div class="empty">Sin actividad.</div>`}</div>`);
   body.querySelector("[data-backp]").onclick=()=>{S.tStudent=null;teacherPanel();};
   body.querySelector("[data-report]").onclick=()=>openReport(s);

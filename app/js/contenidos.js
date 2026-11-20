@@ -65,6 +65,44 @@ const ACT_NAMES = {"toca-letra":"Escucha y toca la letra","toca-silaba":"Escucha
   "mas-larga":"La palabra más larga","une-silabas":"Une las sílabas","cuenta-palabras":"Cuenta las palabras","termina-en":"¿Cómo termina?",
   "intrusa":"La intrusa","rima":"Rimas","quita-silaba":"Quita una sílaba","da-la-vuelta":"Da la vuelta"};
 
+// Catálogo de actividades de cada área: nombre propio, icono y nivel
+const CATALOG = {
+  escucha:[
+    {lvl:1,act:"contar-silabas",name:"¿Cuántas palmadas?",icon:"👏"},
+    {lvl:1,act:"mas-larga",name:"La palabra más larga",icon:"📏"},
+    {lvl:1,act:"une-silabas",name:"Une las sílabas",icon:"🧩"},
+    {lvl:1,act:"cuenta-palabras",name:"Cuenta las palabras",icon:"🔢"},
+    {lvl:2,act:"sonido-en",name:"¿Dónde suena?",icon:"👂"},
+    {lvl:2,act:"empieza-por",name:"¿Cómo empieza?",icon:"🚦"},
+    {lvl:2,act:"termina-en",name:"¿Cómo termina?",icon:"🏁"},
+    {lvl:2,act:"intrusa",name:"La intrusa",icon:"🕵️"},
+    {lvl:3,act:"elige-escena",name:"Escucha y elige",icon:"🖼️"},
+    {lvl:4,act:"monta-escena",name:"Monta la escena",icon:"🎬"},
+    {lvl:5,act:"rima",name:"Rimas",icon:"🎵"},
+    {lvl:5,act:"quita-silaba",name:"Quita una sílaba",icon:"🧽"},
+    {lvl:5,act:"da-la-vuelta",name:"Da la vuelta",icon:"🔄"}
+  ],
+  lectura:[
+    {lvl:1,act:"toca-letra",name:"Busca la letra",icon:"🔍"},
+    {lvl:2,act:"toca-silaba",name:"Busca la sílaba",icon:"🔎"},
+    {lvl:2,act:"falta-silaba",name:"¿Qué sílaba falta?",icon:"❓"},
+    {lvl:3,act:"elige-palabra",name:"¿Qué palabra es?",icon:"🏷️"},
+    {lvl:3,act:"forma-palabra",name:"Forma la palabra",icon:"🧱"},
+    {lvl:3,act:"falta-letra",name:"¿Qué letra falta?",icon:"🔡"},
+    {lvl:4,act:"elige-dibujo",name:"Lee y toca el dibujo",icon:"📖"},
+    {lvl:4,act:"ordena-frase",name:"Ordena la frase",icon:"🔀"},
+    {lvl:4,act:"tijeras",name:"Las tijeras",icon:"✂️"}
+  ],
+  escritura:[
+    {lvl:1,act:"trazo",name:"Repasa las letras",icon:"✏️"},
+    {lvl:2,act:"trazo",name:"Repasa sílabas",icon:"🖍️"},
+    {lvl:2,act:"dictado",name:"Dictado de sílabas",icon:"🎧"},
+    {lvl:3,act:"trazo",name:"Repasa palabras",icon:"🖊️"},
+    {lvl:3,act:"dictado",name:"Dictado de palabras",icon:"📝"}
+  ]
+};
+function actName(area,lvl,act){ const e=(CATALOG[area]||[]).find(x=>x.act===act&&x.lvl===lvl)||(CATALOG[area]||[]).find(x=>x.act===act); return e?e.name:(ACT_NAMES[act]||act); }
+
 // Parte de la palabra que rima: desde la vocal tónica hasta el final
 function rimaKey(word){
   const w=word.toLowerCase(); const plain=w.normalize("NFD").replace(/[\u0301]/g,"").normalize("NFC");
