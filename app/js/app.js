@@ -1204,9 +1204,9 @@ function teacherSetup(){
   });
 }
 function me(){ return byId(DB.teachers,S.teacherId); }
-// El progreso hecho en una clase solo lo ve quien da clase en ella (o la administración)
-function visibleRecs(s){ const t=me(); const ok=t&&t.admin?null:new Set(myGroups().map(g=>g.id));
-  return DB.records.filter(r=>r.st===s.id&&(!ok||ok.has(r.g||s.group))); }
+// El progreso hecho en una clase solo lo ve quien da clase en ella, también si es de administración
+const teachesIn=gid=>{ const t=me(), g=byId(DB.groups,gid); return !!(t&&g&&(g.teachers||[]).includes(t.id)); };
+function visibleRecs(s){ return DB.records.filter(r=>r.st===s.id&&teachesIn(r.g||s.group)); }
 function myGroups(){ const t=me(); return DB.groups.filter(g=>t.admin||(g.teachers||[]).includes(t.id)); }
 const DAY=864e5;
 function backupBanner(){
@@ -1331,8 +1331,8 @@ function groupForm(g){
 }
 
 /* ---- Alumnado ---- */
-function groupSelect(extra){
-  const gs=myGroups();
+function groupSelect(extra,list){
+  const gs=list||myGroups();
   if(!gs.length) return `<div class="panel empty">Primero crea una clase.</div>`;
   if(!gs.find(g=>g.id===S.tGroup)) S.tGroup=gs[0].id;
   return `<div class="panel row"><b>Clase:</b><select data-gsel class="sel">${gs.map(g=>`<option value="${g.id}" ${g.id===S.tGroup?"selected":""}>${esc(g.name)}</option>`).join("")}</select>${extra||""}</div>`;
@@ -1507,7 +1507,9 @@ function spark(recs){
   return `<svg width="84" height="26" viewBox="0 0 84 26" aria-label="Actividad semanal">${w.map((x,i)=>{const v=x.n?Math.max(3,x.n/mx*24):2;return `<rect x="${i*21+2}" y="${26-v}" width="16" height="${v}" rx="3" fill="${x.n?"#8E6DE0":"#E6DFF2"}"><title>${x.n} ejercicios</title></rect>`;}).join("")}</svg>`;
 }
 function tabProgress(body){
-  body.innerHTML=groupSelect(); bindGroupSelect(body); if(!myGroups().length) return;
+  const mine=myGroups().filter(g=>teachesIn(g.id));     // el progreso solo de las clases en las que das clase
+  if(!mine.length){ body.innerHTML=`<div class="panel empty">🔒 Solo puedes ver el progreso de las clases en las que das clase. Para ver el de una clase, añádete como docente en «Clases → Editar».</div>`; return; }
+  body.innerHTML=groupSelect("",mine); bindGroupSelect(body);
   if(S.tStudent) return studentProgress(body,byId(DB.students,S.tStudent));
   const g=byId(DB.groups,S.tGroup);
   const sts=DB.students.filter(s=>inGroup(s,g.id)).sort((a,b)=>a.name.localeCompare(b.name,"es"));
