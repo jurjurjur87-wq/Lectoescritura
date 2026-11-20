@@ -432,31 +432,29 @@ function roundEnd(area,good,total,again,title){
   app.querySelector("[data-again]").onclick=again;
   app.querySelector("[data-home]").onclick=backToArea;
 }
+const okBar=(label="Comprobar")=>`<div class="row okbar"><button class="btn ok big-btn" data-ok>${ICON.check} ${label}</button></div>`;
 function actHeader(ctx,title){
   return `${topBar(AREA_TITLE[ctx.area]+" · "+esc(title),true)}`;
 }
 /* Elección entre 3 opciones (base de varias actividades) */
 function choiceScreen(ctx,{title,prompt,options,correct,fontCss,emo,onSay,sayKey,four,wide,two,record:rec}){
   const st=student(); applyLook();
-  const confirm=options.some(o=>/opt-say/.test(o.html));
   h(`${actHeader(ctx,title)}
   <div class="main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt">${prompt}</div>
     <div class="options ${four?"four":""} ${wide?"wide":""} ${two?"two-opt":""}">${options.map((o,i)=>`<button class="opt ${emo?"emo":""}" data-i="${i}" style="${fontCss?`font-family:${fontCss}`:""}">${o.html}</button>`).join("")}</div>
-    ${confirm?`<div class="row" style="justify-content:center;margin-top:1em"><button class="btn ok big-btn" data-ok>${ICON.check} Comprobar</button></div>`:""}
+    ${okBar()}
   </div>`);
   bindBack(backToArea);
   let tries=0, locked=false, sel=-1; const t0=performance.now();
   const sb=app.querySelector("[data-say]"); if(sb) sb.onclick=onSay;
   if(onSay) setTimeout(onSay,350);
   const btns=[...app.querySelectorAll(".opt")];
-  // Con dibujos que se escuchan: tocar elige y lo dice; luego se comprueba
-  if(confirm){
-    btns.forEach(b=>b.onclick=()=>{ if(locked) return; sel=+b.dataset.i; btns.forEach(x=>x.classList.toggle("picked",x===b));
-      const w=b.querySelector(".opt-say")?.dataset.word; if(w) say(w,"palabra:"+w); });
-    app.querySelector("[data-ok]").onclick=()=>{ if(locked) return; if(sel<0){ tts("Toca uno de los dibujos"); return; } check(btns[sel]); };
-  } else btns.forEach(b=>b.onclick=()=>check(b));
+  // Tocar elige (y, si es un dibujo, lo dice); la respuesta se da con Comprobar
+  btns.forEach(b=>b.onclick=()=>{ if(locked) return; sel=+b.dataset.i; btns.forEach(x=>x.classList.toggle("picked",x===b));
+    const w=b.querySelector("[data-word]")?.dataset.word; if(w) say(w,"palabra:"+w); });
+  app.querySelector("[data-ok]").onclick=()=>{ if(locked) return; if(sel<0){ tts("Toca una de las respuestas"); return; } check(btns[sel]); };
   function check(b){
     if(locked) return; const o=options[+b.dataset.i]; tries++;
     if(o.ok){
@@ -465,7 +463,7 @@ function choiceScreen(ctx,{title,prompt,options,correct,fontCss,emo,onSay,sayKey
       celebrate(); praise();
       setTimeout(()=>ctx.done(tries===1),1400);
     }else{
-      b.classList.remove("bad"); void b.offsetWidth; b.classList.add("bad");
+      b.classList.remove("bad","picked"); void b.offsetWidth; b.classList.add("bad"); sel=-1;
       tryAgain(); if(onSay) setTimeout(onSay,1100);
     }
   }
@@ -540,6 +538,7 @@ function actBuild(it,ctx){
     <div class="prompt">${promptHTML}</div>
     <div class="slots ${it.act==="ordena-frase"?"words":""}" style="font-family:${fcss}" data-slots></div>
     <div class="tiles" style="font-family:${fcss}" data-tiles></div>
+    ${okBar()}
   </div>`);
   bindBack(backToArea);
   app.querySelector("[data-say]").onclick=sayFn; setTimeout(sayFn,350);
@@ -551,9 +550,11 @@ function actBuild(it,ctx){
     tEl.querySelectorAll("[data-ti]").forEach(b=>b.onclick=()=>{
       if(locked) return; const t=tiles[+b.dataset.ti]; if(slots.includes(t)) return;
       const free=slots.indexOf(null); if(free<0) return; slots[free]=t; paint();
-      if(!slots.includes(null)) check();
     });
+    okBtn.classList.toggle("ready",!slots.includes(null));
   }
+  const okBtn=app.querySelector("[data-ok]");
+  okBtn.onclick=()=>{ if(locked) return; if(slots.includes(null)){ tts("Primero completa todos los huecos"); return; } check(); };
   function check(){
     tries++;
     const ok=slots.every((s,i)=>s.t===target[i]);
@@ -596,7 +597,7 @@ function actSound(it,ctx){
   const q=start?`¿Qué palabra empieza por ${target}?`:`¿Qué palabra tiene ${target}?`;
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">${start?"¿Cuál empieza por":"¿Cuál tiene"} <b class="snd">«${esc(target)}»</b>?</span>`,
-    options:opts.map(w=>({html:`${pic(w.w,w.e,"emoji in-opt")}<span class="opt-say" data-word="${esc(w.w)}" role="button" aria-label="Escuchar ${esc(w.w)}">${ICON.speaker}</span>`,ok:w===good})), emo:true,
+    options:opts.map(w=>({html:`${pic(w.w,w.e,"emoji in-opt")}<i class="opt-w" data-word="${esc(w.w)}" hidden></i>`,ok:w===good})), emo:true,
     onSay:()=>{ say(q); }, record:recFirst(ctx,it)});
   app.querySelectorAll(".opt-say").forEach(b=>b.addEventListener("click",e=>{ e.stopPropagation(); say(b.dataset.word,"palabra:"+b.dataset.word); },true));
 }
@@ -606,7 +607,7 @@ function ttsSeq(parts,gap=450){
     parts.forEach((t,i)=>setTimeout(()=>{ const u=new SpeechSynthesisUtterance(t); u.lang="es-ES"; if(VOICE) u.voice=VOICE; u.rate=st&&st.helps&&st.helps.lenta?.6:.8; speechSynthesis.speak(u); },i*(gap+350))); }catch(e){}
 }
 const clapsHTML=k=>`<span class="claps">${Array.from({length:k},()=>`<i>${ICON.clap}</i>`).join("")}</span><b>${k}</b>`;
-const picOpt=w=>`${pic(w.w,w.e,"emoji in-opt")}<span class="opt-say" data-word="${esc(w.w)}" role="button" aria-label="Escuchar ${esc(w.w)}">${ICON.speaker}</span>`;
+const picOpt=w=>`${pic(w.w,w.e,"emoji in-opt")}<i class="opt-w" data-word="${esc(w.w)}" hidden></i>`;
 function bindOptSay(){ app.querySelectorAll(".opt-say").forEach(b=>b.addEventListener("click",e=>{ e.stopPropagation(); say(b.dataset.word,"palabra:"+b.dataset.word); },true)); }
 // Palabra más larga: dos dibujos con distinto número de sílabas
 function actLonger(it,ctx){
@@ -682,8 +683,8 @@ function oralChoice(ctx,it,{prompt,onSay,options}){
   <div class="main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt">${prompt}</div>
-    <div class="options">${options.map((o,i)=>`<button class="opt oral" data-i="${i}"><span class="oral-ico">${ICON.speaker}</span><span class="oral-n">${["A","B","C","D"][i]}</span><span class="oral-t">${txt(st,o.label)}</span></button>`).join("")}</div>
-    <div class="row" style="justify-content:center;margin-top:1.2em"><button class="btn ok big-btn" data-ok>${ICON.check} Comprobar</button></div>
+    <div class="options">${options.map((o,i)=>`<button class="opt oral" data-i="${i}"><span class="oral-n">${["A","B","C","D"][i]}</span><span class="oral-t">${txt(st,o.label)}</span></button>`).join("")}</div>
+    ${okBar()}
   </div>`);
   bindBack(backToArea);
   let sel=-1, tries=0, locked=false; const t0=performance.now();
@@ -695,7 +696,7 @@ function oralChoice(ctx,it,{prompt,onSay,options}){
     tries++; const b=btns[sel];
     if(options[sel].ok){ locked=true; b.classList.add("ok"); record(ctx.area,ctx.lvl,it.key,tries,tries===1?100:Math.max(0,100-50*(tries-1)),performance.now()-t0,it.act);
       celebrate(); praise(); setTimeout(()=>ctx.done(tries===1),1400); }
-    else { b.classList.remove("bad"); void b.offsetWidth; b.classList.add("bad"); tryAgain(); }
+    else { b.classList.remove("bad","sel"); void b.offsetWidth; b.classList.add("bad"); sel=-1; tryAgain(); }
   };
 }
 // Quita una sílaba (la primera)
@@ -743,6 +744,7 @@ function actBuildScene(it,ctx){
     <div class="prompt"><button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">Escucha y pon los dibujos en orden</span></div>
     <div class="slots scene-slots" data-slots></div>
     <div class="tiles scene-tiles" data-tiles></div>
+    ${okBar()}
   </div>`);
   bindBack(backToArea);
   const sayIt=()=>say(txt,"frase:"+txt); app.querySelector("[data-say]").onclick=sayIt; setTimeout(sayIt,350);
@@ -752,8 +754,11 @@ function actBuildScene(it,ctx){
     tEl.innerHTML=tiles.map((t,i)=>`<button class="piece pic-piece ${slots.includes(t)?"used":""}" data-ti="${i}">${pic(t.k,t.e,"emoji in-slot")}</button>`).join("");
     sEl.querySelectorAll("[data-si]").forEach(b=>b.onclick=()=>{ if(locked) return; const i=+b.dataset.si; if(slots[i]){slots[i]=null;paint();} });
     tEl.querySelectorAll("[data-ti]").forEach(b=>b.onclick=()=>{ if(locked) return; const t=tiles[+b.dataset.ti]; if(slots.includes(t)) return;
-      const f=slots.indexOf(null); if(f<0) return; slots[f]=t; paint(); if(!slots.includes(null)) check(); });
+      const f=slots.indexOf(null); if(f<0) return; slots[f]=t; paint(); });
+    okBtn.classList.toggle("ready",!slots.includes(null));
   }
+  const okBtn=app.querySelector("[data-ok]");
+  okBtn.onclick=()=>{ if(locked) return; if(slots.includes(null)){ tts("Primero pon los tres dibujos"); return; } check(); };
   function check(){
     tries++; const ok=slots.every((s,i)=>s.k===target[i].k);
     if(ok){ locked=true; sEl.classList.add("ok"); record(ctx.area,ctx.lvl,it.key,tries,tries===1?100:Math.max(0,100-34*(tries-1)),performance.now()-t0,it.act);

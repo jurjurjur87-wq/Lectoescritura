@@ -521,3 +521,8 @@ button.pg{background:#fff;cursor:pointer;font:inherit} button.pg:hover{border-co
 body.sensible .act-tile{--lvc:#8a94a6;box-shadow:none}
 body.sensible .act-tile.rec{outline:2px solid #8a94a6}
 @media (max-width:600px){.acts{grid-template-columns:1fr 1fr;gap:.5em}.act-tile{min-height:8em;font-size:.95em}}
+
+.okbar{justify-content:center;margin-top:1em}
+.okbar .btn{min-width:11em}
+.slots~.tiles~.okbar .btn:not(.ready),.scene-tiles~.okbar .btn:not(.ready){opacity:.55}
+.opt.picked{outline:5px solid var(--primary);outline-offset:-5px}
