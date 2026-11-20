@@ -579,3 +579,31 @@ body.sensible .act-tile.rec{outline:2px solid #8a94a6}
 .steps .st-n{width:1.8em;height:1.8em;border-radius:50%;display:grid;place-items:center;background:var(--primary);color:#fff;font-weight:800;flex:none}
 .steps li.done .st-n{background:var(--ok)}
 .steps .btn[disabled]{opacity:.45}
+
+/* Móvil en horizontal (poca altura): todo más compacto para que quepa sin desplazar */
+@media (orientation:landscape) and (max-height:520px){
+  .top{min-height:0;padding:.3em .7em}
+  .top h1{font-size:1.1em}
+  .main{padding:0 .8em .6em}
+  .progress-dots{margin:0 0 .4em}
+  .progress-dots span{width:.6em;height:.6em}
+  .prompt{min-height:0;padding:.4em .8em;margin-bottom:.5em;gap:.6em}
+  .prompt .phrase{font-size:1.6em}
+  .prompt .ask{font-size:1em}
+  .prompt .emoji{font-size:2.6em!important}
+  .prompt img.picto{width:3.4em;height:3.4em}
+  .speak{width:2.8em;height:2.8em;font-size:1.1em;box-shadow:0 3px 0 var(--primary-dark)}
+  .options{gap:.6em}
+  .opt{min-height:3.6em;font-size:2.2em}
+  .opt.emo{min-height:6.5rem;font-size:.8em}
+  .opt span.in-opt{font-size:3.6em}
+  .opt img.in-opt{width:5em;height:5em}
+  .okbar{margin-top:.5em}
+  .big-btn{font-size:1em}
+  .slot{font-size:1.6em}
+  .piece{font-size:1.6em}
+  .m-item{height:3.6rem} .m-word{font-size:1.4rem}
+  .act-tile{min-height:6.5em;padding-top:1.7em}
+  .act-ico{font-size:1.8em}
+  .home .hero, .home-hero{display:none}
+}
