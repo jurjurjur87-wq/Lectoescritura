@@ -35,7 +35,7 @@ const esc = s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt
 const stripAcc = s=>s.toLowerCase().replace(/[áàä]/g,"a").replace(/[éèë]/g,"e").replace(/[íìï]/g,"i").replace(/[óòö]/g,"o").replace(/[úùü]/g,"u");
 const wordOf = w=>WORDS.find(x=>x.w===w);
 
-function defaultCfg(){ return {lectura:1,escritura:1,escucha:1,font:"imprenta"}; }
+function defaultCfg(){ return {lectura:1,escritura:1,escucha:1,font:(DB&&DB.settings&&DB.settings.font)||"cursiva"}; }   // letra general: escolar por defecto
 function defaultHelps(){ return {grande:false,tol:"media",lenta:false,calma:false,picto:true,pista:true,ronda:6}; }
 
 /* Estado de la sesión */
@@ -51,7 +51,7 @@ function student(){
 }
 const inStudent = ()=>!!(S.studentId||S.demo);
 function enabledLetters(st){ return (st.letters && st.letters.length) ? st.letters : LETTERS; }
-function fontOf(st){ return FONTS[st.cfg.font]||FONTS.imprenta; }
+function fontOf(st){ return FONTS[st.cfg.font]||FONTS[DB.settings.font||"cursiva"]; }
 function show(st,text){ return fontOf(st).transform(text); }
 // Texto para mostrar: en letra escolar se dibuja con los mismos trazos que se enseñan
 function txt(st,text){ const t=show(st,text); return st.cfg.font==="cursiva" ? ESCOLAR.html(t) : esc(t); }
@@ -1837,6 +1837,10 @@ function tabSettings(body){
     </div>
     <p class="muted small-t" style="margin:.6em 0 0">El modo sensible también se puede activar solo para un alumno desde su ficha, sea cual sea el aspecto elegido aquí.</p>
   </div>
+  <div class="panel"><h3>Tipo de letra general</h3>
+    <p class="muted" style="margin-top:0">Es la letra con la que empiezan las clases nuevas (y su alumnado). Cada clase y cada alumno se puede cambiar después.</p>
+    ${Object.entries(FONTS).map(([k,f])=>opt("font",k,(st.font||"cursiva")===k,f.label,{cursiva:"Minúsculas enlazadas, con rabito de entrada. Trazo a trazo.",imprenta:"Letra de imprenta en minúscula.",mayusculas:"Todo en mayúsculas de palo."}[k]||"")).join("")}
+    <div class="row" style="margin-top:.4em"><button class="btn small" data-fontall>Aplicar a todas las clases y a todo el alumnado</button></div></div>
   <div class="panel"><h3>Celebración al acertar</h3>
     <p class="muted" style="margin-top:0">En modo sensible no hay animaciones, elijas lo que elijas aquí.</p>
     ${opt("cel","confeti",cur==="confeti","Estrellas","Caen unas estrellas por la pantalla.")}
@@ -1853,12 +1857,16 @@ function tabSettings(body){
       <div class="row" style="justify-content:center;gap:.3em"><button class="btn small" data-choose="${esc(w.k)}">ARASAAC</button><label class="btn small">Foto<input type="file" accept="image/*" data-pw="${esc(w.k)}" hidden></label></div></div>`).join("")}</div></details>
     <p class="muted small-t">Pictogramas: Sergio Palao. Origen: ARASAAC (arasaac.org). Licencia: CC BY-NC-SA. Propiedad: Gobierno de Aragón (España).</p></div>
   <div class="panel"><h3>Bloqueo del aula</h3>
-    ${opt("lock","1",!!st.lock,"Bloquear la salida","El alumnado no puede cambiar de clase ni cerrar la aplicación (versión de escritorio) sin el PIN de un docente. El modo demostración también pide PIN.","checkbox")}
+    ${opt("lock","1",!!st.lock,"Bloquear la salida","El alumnado no puede cambiar de clase ni cerrar la aplicación (versión de escritorio) sin el PIN de un docente. El modo proyección («Toda la clase») también pide PIN.","checkbox")}
     <label class="form" style="margin-top:.5em"><span class="small-t"><b>Clase fija en este equipo</b> (se abre directamente)</span>
       <select data-fixed class="sel"><option value="">Ninguna: el alumnado elige su clase</option>${gs.map(g=>`<option value="${g.id}" ${st.fixedGroup===g.id?"selected":""}>${esc(g.name)}</option>`).join("")}</select></label></div>
   <div class="panel"><h3>Acerca de</h3><p class="muted small-t" style="margin:0">Lectoescritura · Licencia CC BY-NC-ND 4.0. Fuentes Andika y Playwrite España (SIL OFL). Los datos se guardan solo en este equipo.</p></div>`;
   const rerender=()=>{ teacherPanel(); };  // conserva la posición
   body.querySelectorAll("input[name=look]").forEach(r=>r.onchange=()=>{st.look=r.value; save(); rerender(); toast("Guardado");});
+  body.querySelectorAll("input[name=font]").forEach(r=>r.onchange=()=>{st.font=r.value; save(); rerender(); toast("Guardado");});
+  body.querySelector("[data-fontall]").onclick=()=>{ const f=st.font||"cursiva";
+    confirmBox(`¿Poner «${FONTS[f].label}» en todas las clases y en todo el alumnado de este equipo?`,"Aplicar",()=>{
+      DB.groups.forEach(g=>g.defaults.font=f); DB.students.forEach(x=>x.cfg.font=f); save(); rerender(); toast("Aplicado a todos"); }); };
   body.querySelectorAll("input[name=cel]").forEach(r=>r.onchange=()=>{st.celebration=r.value; save(); rerender(); toast("Guardado");});
   body.querySelector("input[name=praise]").onchange=e=>{st.praise=e.target.checked; save(); rerender(); toast("Guardado");};
   body.querySelectorAll("input[name=pic]").forEach(r=>r.onchange=()=>{st.pictos=r.value; save(); rerender(); toast("Guardado");});

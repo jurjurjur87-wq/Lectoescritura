@@ -41,9 +41,9 @@ const LEVELS = {
   escucha:[null,"Sílabas","Sonidos","Comprensión","Escenas","Juegos de sonidos"]
 };
 const FONTS = {
+  cursiva:{label:"Escolar (enlazada)",css:"'Playwrite ES'",transform:s=>s.toLocaleLowerCase("es")},
   imprenta:{label:"Imprenta (minúscula)",css:"'Andika'",transform:s=>s},
-  mayusculas:{label:"Mayúsculas",css:"'Andika'",transform:s=>s.toLocaleUpperCase("es")},
-  cursiva:{label:"Escolar (enlazada)",css:"'Playwrite ES'",transform:s=>s.toLocaleLowerCase("es")}
+  mayusculas:{label:"Mayúsculas",css:"'Andika'",transform:s=>s.toLocaleUpperCase("es")}
 };
 const TOLERANCE = {
   baja:{label:"Exigente",cover:.86,cell:.95,out:.12,k:.85},

@@ -1,5 +1,5 @@
 // Permite usar la app sin conexión una vez abierta (tablet / PC con la versión web)
-const CACHE = "lectoescritura-v15";
+const CACHE = "lectoescritura-v16";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg", "./css/estilos.css",
   "./js/banco.js", "./js/contenidos.js", "./js/trazos.js", "./js/medios.js", "./js/app.js",
   "./fonts/andika.woff2", "./fonts/andika-bold.woff2", "./fonts/playwrite-es.woff2"];
