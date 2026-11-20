@@ -108,11 +108,122 @@ const TRAZOS = (() => {
 })();
 
 /* =========================================================
+   LETRA ESCOLAR (enlazada): minúsculas como trazos continuos
+   Cada letra tiene: entrada (desde la línea base), cuerpo y salida.
+   Las palabras se escriben de un solo trazo; los puntos, tildes y
+   cruces se hacen al final.
+   ========================================================= */
+const ESCOLAR = (() => {
+  const B = (p0, p1, p2, p3, n = 14) => { const o = []; for (let i = 0; i <= n; i++) { const t = i / n, u = 1 - t;
+    o.push([u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0], u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1]]); } return o; };
+  const A = (cx, cy, rx, ry, a0, a1) => { const n = Math.max(8, Math.ceil(Math.abs(a1 - a0) / 6)), o = [];
+    for (let i = 0; i <= n; i++) { const a = (a0 + (a1 - a0) * i / n) * Math.PI / 180; o.push([cx + rx * Math.cos(a), cy + ry * Math.sin(a)]); } return o; };
+  const L = (a, b) => [a, b];
+  const cat = (...parts) => { const o = []; parts.flat().forEach(p => { const l = o[o.length - 1]; if (!l || Math.hypot(l[0] - p[0], l[1] - p[1]) > .3) o.push(p); }); return o; };
+  const exitB = (x, y) => B([x, y], [x, y + 8], [x + 6, 100], [x + 14, 100]);        // salida hacia la línea base
+  const tail = (x, y) => B([x, y], [x + 4, y - 4], [x + 10, 52], [x + 16, 52]);        // salida alta (o, b, v, w)
+  // óvalo de a, d, g, q, o: empieza arriba y gira hacia la izquierda; la entrada sube por la izquierda
+  const ov = A(24, 75, 15, 24, -75, -435), ovS = ov[0];
+  const entOv = B([0, 100], [4, 92], [6, 56], ovS);
+  const entUp = (x, y) => B([0, 100], [x * .5, 100], [x * .9, y + 25], [x, y]);       // entrada a la parte alta
+  const loopUp = (x) => cat(B([0, 100], [10, 100], [x + 14, 60], [x + 14, 22]), B([x + 14, 22], [x + 14, 2], [x, 2], [x, 22]));
+  const G = {
+    a: { w: 56, e: entOv, b: cat(ov, L(ovS, [40, 52]), L([40, 52], [40, 90]), exitB(40, 90)) },
+    b: { w: 52, e: loopUp(8), b: cat(L([8, 22], [8, 94]), B([8, 94], [10, 102], [34, 104], [36, 82]), B([36, 82], [38, 62], [24, 50], [16, 58]), tail(16, 58).map(([x, y]) => [x + 14, y > 56 ? 56 - (56 - y) : y])), high: true },
+    c: { w: 52, e: B([0, 100], [4, 92], [6, 56], [26, 51]), b: cat(B([26, 51], [32, 50], [37, 53], [35, 58]), A(24, 75, 14, 24, -50, -320), exitB(35, 90)) },
+    d: { w: 56, e: entOv, b: cat(ov, L(ovS, [40, 52]), L([40, 52], [40, 2]), L([40, 2], [40, 90]), exitB(40, 90)) },
+    e: { w: 48, e: B([0, 100], [14, 98], [30, 82], [30, 66]), b: cat(B([30, 66], [30, 52], [16, 48], [12, 60]), B([12, 60], [6, 74], [10, 98], [30, 100]), L([30, 100], [46, 100])) },
+    f: { w: 44, e: cat(B([0, 100], [8, 100], [20, 56], [22, 22])), b: cat(B([22, 22], [24, 2], [8, 2], [10, 24]), L([10, 24], [12, 132]), B([12, 132], [12, 150], [28, 148], [26, 130]), B([26, 130], [24, 112], [16, 104], [14, 100]), L([14, 100], [42, 100])) },
+    g: { w: 56, e: entOv, b: cat(ov, L(ovS, [40, 52]), L([40, 52], [40, 128]), B([40, 128], [40, 150], [14, 150], [16, 134]), B([16, 134], [18, 118], [40, 104], [56, 100])) },
+    h: { w: 54, e: loopUp(8), b: cat(L([8, 22], [8, 100]), L([8, 100], [8, 68]), A(22, 68, 14, 16, 180, 360), L([36, 68], [36, 90]), exitB(36, 90)) },
+    i: { w: 34, e: entUp(20, 50), b: cat(L([20, 50], [20, 90]), exitB(20, 90)), x: [[[20, 30]]] },
+    j: { w: 38, e: entUp(20, 50), b: cat(L([20, 50], [20, 128]), B([20, 128], [20, 150], [0, 150], [2, 136]), B([2, 136], [4, 120], [22, 104], [38, 100])), x: [[[20, 30]]] },
+    k: { w: 50, e: loopUp(8), b: cat(L([8, 22], [8, 100]), L([8, 100], [8, 74]), B([8, 74], [18, 50], [42, 52], [32, 68]), B([32, 68], [26, 76], [14, 76], [14, 76]), B([14, 76], [26, 78], [28, 98], [36, 100]), L([36, 100], [48, 100])) },
+    l: { w: 30, e: loopUp(8), b: cat(L([8, 22], [8, 90]), exitB(8, 90)) },
+    m: { w: 74, e: B([0, 100], [3, 74], [6, 52], [12, 54]), b: cat(B([12, 54], [16, 55], [12, 62], [12, 68]), L([12, 68], [12, 100]), L([12, 100], [12, 66]), A(24, 66, 12, 14, 180, 360), L([36, 66], [36, 100]), L([36, 100], [36, 66]), A(48, 66, 12, 14, 180, 360), L([60, 66], [60, 90]), exitB(60, 90)) },
+    n: { w: 56, e: B([0, 100], [3, 74], [6, 52], [12, 54]), b: cat(B([12, 54], [16, 55], [12, 62], [12, 68]), L([12, 68], [12, 100]), L([12, 100], [12, 66]), A(26, 66, 14, 14, 180, 360), L([40, 66], [40, 90]), exitB(40, 90)) },
+    o: { w: 54, e: entOv, b: cat(ov, B(ovS, [36, 51], [46, 52], [54, 52])), high: true },
+    p: { w: 50, e: entUp(10, 52), b: cat(L([10, 52], [10, 144]), L([10, 144], [10, 70]), B([10, 70], [14, 48], [40, 48], [40, 74]), B([40, 74], [40, 100], [16, 104], [12, 94]), B([12, 94], [24, 100], [38, 100], [50, 100])) },
+    q: { w: 56, e: entOv, b: cat(ov, L(ovS, [40, 52]), L([40, 52], [40, 144])), x: [L([30, 128], [52, 128])], lift: true },
+    r: { w: 44, e: entUp(12, 52), b: cat(B([12, 52], [16, 46], [24, 58], [30, 54]), B([30, 54], [26, 66], [24, 96], [32, 100]), L([32, 100], [44, 100])) },
+    s: { w: 44, e: entUp(22, 50), b: cat(B([22, 50], [34, 64], [40, 84], [30, 96]), B([30, 96], [24, 102], [12, 100], [10, 92]), B([10, 92], [16, 100], [30, 100], [44, 100])) },
+    t: { w: 36, e: entUp(18, 24), b: cat(L([18, 24], [18, 90]), exitB(18, 90)), x: [L([6, 52], [32, 52])] },
+    u: { w: 56, e: entUp(14, 52), b: cat(B([14, 52], [12, 80], [14, 100], [26, 100]), B([26, 100], [36, 100], [40, 80], [40, 52]), L([40, 52], [40, 90]), exitB(40, 90)) },
+    v: { w: 54, e: entUp(10, 52), b: cat(B([10, 52], [12, 72], [16, 100], [24, 100]), B([24, 100], [34, 100], [38, 72], [38, 52]), B([38, 52], [42, 56], [48, 53], [54, 52])), high: true },
+    w: { w: 66, e: entUp(10, 52), b: cat(B([10, 52], [10, 76], [14, 100], [22, 100]), B([22, 100], [30, 100], [32, 76], [32, 64]), B([32, 64], [32, 80], [36, 100], [44, 100]), B([44, 100], [52, 100], [54, 72], [54, 52]), B([54, 52], [58, 56], [62, 53], [66, 52])), high: true },
+    x: { w: 50, e: B([0, 100], [4, 76], [6, 52], [14, 52]), b: cat(B([14, 52], [24, 52], [28, 64], [27, 76]), B([27, 76], [26, 90], [20, 100], [10, 98])), b2: cat(B([40, 58], [36, 50], [26, 56], [27, 76]), B([27, 76], [28, 96], [38, 100], [50, 100])) },
+    y: { w: 56, e: entUp(14, 52), b: cat(B([14, 52], [12, 80], [14, 100], [26, 100]), B([26, 100], [36, 100], [40, 80], [40, 52]), L([40, 52], [40, 128]), B([40, 128], [40, 150], [14, 150], [16, 134]), B([16, 134], [18, 118], [40, 104], [56, 100])) },
+    z: { w: 52, e: B([0, 100], [4, 78], [6, 56], [12, 54]), b: cat(B([12, 54], [20, 46], [36, 50], [34, 58]), B([34, 58], [30, 70], [18, 86], [12, 98]), B([12, 98], [10, 104], [22, 104], [24, 98]), B([24, 98], [28, 92], [34, 100], [52, 100])) },
+  };
+  G["ñ"] = Object.assign({}, G.n, { x: [cat(B([12, 38], [18, 30], [26, 40], [30, 36]), B([30, 36], [34, 32], [38, 30], [42, 32]))] });
+  // la b: corrijo la cola alta (más simple)
+  G.b.b = cat(L([8, 22], [8, 94]), B([8, 94], [10, 102], [34, 104], [36, 82]), B([36, 82], [38, 62], [24, 50], [18, 58]), B([18, 58], [26, 52], [40, 52], [52, 52]));
+  const ACC = { "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u" };
+  function glyph(ch) {
+    if (G[ch]) return G[ch];
+    const base = ACC[ch]; if (!base) return null;
+    const g = G[base]; const cx = { a: 24, e: 20, i: 20, o: 24, u: 28 }[base];
+    return Object.assign({}, g, { x: [L([cx + 8, 28], [cx - 3, 42])] });   // la í lleva tilde y no punto
+  }
+  const supports = t => [...t].every(c => glyph(c));
+  const SHEAR = .18;
+  function layout(text) {
+    const main = [], mains = [], extras = []; let end = null, prevHigh = false, nextX = 0;
+    [...text].forEach((ch, i) => {
+      const g = glyph(ch); if (!g) return;
+      let ox;
+      if (!end) ox = nextX;
+      else if (prevHigh) ox = end[0] + 12 - g.e["befhkl".includes(ch) ? Math.floor(g.e.length * .45) : g.e.length - 1][0];
+      else ox = end[0];
+      const mv = p => [p[0] + ox, p[1]];
+      if (end && prevHigh) {                                   // enlace desde una salida alta
+        // las letras con lazo (b, e, f, h, k, l) necesitan parte de su entrada para formar el lazo
+        const loopy = "befhkl".includes(ch);
+        const idx = loopy ? Math.floor(g.e.length * .45) : g.e.length - 1;
+        const e1 = mv(g.e[idx]);
+        main.push(...B(end, [end[0] + 8, end[1] + (loopy ? 6 : 0)], [e1[0] - 8, e1[1] + (loopy ? 2 : -2)], e1).slice(1));
+        if (loopy) main.push(...g.e.slice(idx + 1).map(mv));
+      } else main.push(...(end ? g.e.slice(1) : g.e).map(mv));
+      void 0;
+      main.push(...g.b.slice(1).map(mv));
+      if (g.b2) { mains.push(main.splice(0)); main.push(...g.b2.map(mv)); }       // se levanta el lápiz y sigue
+      (g.x || []).forEach(s => extras.push({ pts: s.map(mv), letter: i }));
+      end = main[main.length - 1]; prevHigh = !!g.high;
+      if (g.lift) { mains.push(main.splice(0)); end = null; nextX = Math.max(...g.b.map(p => p[0])) + ox + 14; }
+    });
+    if (main.length) mains.push(main);
+    const sh = p => [p[0] + (100 - p[1]) * SHEAR, p[1]];
+    const strokes = [...mains.filter(m => m.length).map(m => ({ pts: m.map(sh), letter: 0 })), ...extras.map(e => ({ pts: e.pts.map(sh), letter: e.letter }))];
+    let minX = Infinity, maxX = -Infinity, minY = 0, maxY = 140;
+    strokes.forEach(s => s.pts.forEach(([x, y]) => { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); }));
+    return { strokes, minX, maxX, minY, maxY };
+  }
+  // Dibuja una palabra como SVG en línea, con la misma letra que el trazado
+  const K = .009, cache = {};
+  function svgWord(word) {
+    if (cache[word]) return cache[word];
+    const Lw = layout(word), pad = 6, x0 = Lw.minX - pad, x1 = Lw.maxX + pad;
+    const d = Lw.strokes.map(s => s.pts.length === 1 ? `M${s.pts[0][0].toFixed(1)} ${s.pts[0][1].toFixed(1)}l.1 0` : "M" + s.pts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join("L")).join("");
+    return cache[word] = `<svg class="esc-w" viewBox="${x0.toFixed(1)} -30 ${(x1 - x0).toFixed(1)} 180" style="width:${((x1 - x0) * K).toFixed(3)}em;height:${(180 * K).toFixed(3)}em" aria-hidden="true"><path d="${d}"/></svg>`;
+  }
+  // Texto completo: las palabras en minúscula se dibujan; mayúsculas y signos, con la fuente
+  function html(text) {
+    const escH = t => t.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    return `<span class="esc-t" aria-label="${escH(text)}">` + text.split(/([a-zñáéíóú]+)/).map(part => {
+      if (!part) return "";
+      if (/^[a-zñáéíóú]+$/.test(part) && supports(part)) return svgWord(part);
+      return `<span class="esc-o">${escH(part)}</span>`;
+    }).join("") + `</span>`;
+  }
+  return { glyph, supports, layout, svgWord, html };
+})();
+
+/* =========================================================
    MOTOR DE TRAZADO CON ORDEN Y DIRECCIÓN
    ========================================================= */
 function createStrokeEngine(o) {
   // o: {text, guide, ink, demo (canvas), tol:{k}, colors, onProgress(p,msg), onSuccess(acc,errors), say}
-  const L = TRAZOS.layout(o.text);
+  const L = (o.layout || TRAZOS.layout)(o.text);
   let W = 0, H = 0, u = 1, ox = 0, oy = 0;
   let strokes = [];          // {pts (px), samples, len}
   let cur = 0, k = 0, ink = [], doneInk = [], ignoring = false, active = null, errors = 0, devSum = 0, devN = 0;
@@ -220,7 +331,10 @@ function createStrokeEngine(o) {
     const p = pos(e), s = strokes[cur], n = s.samples.length;
     const l = ink[ink.length - 1]; if (dist(p, l) < 2) return;
     ink.push(p);
-    for (let j = k; j < Math.min(n, k + 14); j++) if (dist(p, s.samples[j]) < R()) k = j + 1;
+    // avanza hasta la muestra más cercana dentro de la ventana (en empate, la más temprana: así funcionan los tramos que suben y bajan por el mismo sitio)
+    let best = -1, bd = Infinity;
+    for (let j = k; j < Math.min(n, k + 14); j++) { const d = dist(p, s.samples[j]); if (d < R() && d < bd - .5) { bd = d; best = j; } }
+    if (best >= 0) k = best + 1;
     let m = Infinity; for (let j = Math.max(0, k - 8); j < Math.min(n, k + 16); j++) m = Math.min(m, dist(p, s.samples[j]));
     if (m > OFF()) {
       errors++; ignoring = true; ink = []; drawInk();
@@ -264,7 +378,7 @@ function createStrokeEngine(o) {
         d.clearRect(0, 0, W, H); d.lineCap = "round"; d.lineJoin = "round";
         for (let i = 0; i < si; i++) { d.strokeStyle = "rgba(108,74,182,.55)"; d.lineWidth = Math.max(8, 7 * u); path(d, strokes[i].pts); }
         if (si >= strokes.length) { demoing = false; setTimeout(() => { d.clearRect(0, 0, W, H); drawGuide(); res(); }, 600); return; }
-        const s = strokes[si], len = lens[si]; const dist0 = Math.min(len, (now - t0) * speed);
+        const s = strokes[si], len = lens[si]; const dist0 = Math.max(0, Math.min(len, (now - t0) * speed));
         // recorte del trazo hasta dist0
         const part = [s.pts[0]]; let acc = 0, px = s.pts[0];
         for (let i = 1; i < s.pts.length; i++) { const dd = dist(s.pts[i], s.pts[i - 1]); if (acc + dd >= dist0) { const f = (dist0 - acc) / dd; px = [s.pts[i - 1][0] + (s.pts[i][0] - s.pts[i - 1][0]) * f, s.pts[i - 1][1] + (s.pts[i][1] - s.pts[i - 1][1]) * f]; part.push(px); break; } acc += dd; part.push(s.pts[i]); px = s.pts[i]; }

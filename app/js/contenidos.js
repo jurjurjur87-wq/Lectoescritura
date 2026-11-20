@@ -54,12 +54,13 @@ const GROUP_COLORS = ["#6C4AB6","#E0618A","#2E9E8F","#E8873D","#3C7DD9","#8BB43A
 
 const LEVELS = {
   lectura:[null,"Letras","Sílabas","Palabras","Frases"],
-  escritura:[null,"Letras","Sílabas","Palabras"]
+  escritura:[null,"Letras","Sílabas","Palabras"],
+  escucha:[null,"Sílabas","Sonidos","Comprensión","Escenas"]
 };
 const FONTS = {
   imprenta:{label:"Imprenta (minúscula)",css:"'Andika'",transform:s=>s},
   mayusculas:{label:"Mayúsculas",css:"'Andika'",transform:s=>s.toLocaleUpperCase("es")},
-  cursiva:{label:"Cursiva ligada",css:"'Playwrite ES'",transform:s=>s}
+  cursiva:{label:"Escolar (enlazada)",css:"'Playwrite ES'",transform:s=>s.toLocaleLowerCase("es")}
 };
 const TOLERANCE = {
   baja:{label:"Exigente",cover:.86,cell:.95,out:.12,k:.85},
@@ -70,9 +71,51 @@ const ROUND = 6;
 
 // Actividades de cada nivel (en una ronda se van alternando)
 const ACTIVITIES = {
-  lectura:  {1:["toca-letra"], 2:["toca-silaba","falta-silaba"], 3:["elige-palabra","forma-palabra","falta-letra"], 4:["elige-dibujo","ordena-frase"]},
-  escritura:{1:["trazo"], 2:["trazo","dictado"], 3:["trazo","dictado"]}
+  lectura:  {1:["toca-letra"], 2:["toca-silaba","falta-silaba"], 3:["elige-palabra","forma-palabra","falta-letra"], 4:["elige-dibujo","ordena-frase","tijeras"]},
+  escritura:{1:["trazo"], 2:["trazo","dictado"], 3:["trazo","dictado"]},
+  escucha:  {1:["contar-silabas"], 2:["sonido-en","empieza-por"], 3:["elige-escena"], 4:["monta-escena"]}
 };
 const ACT_NAMES = {"toca-letra":"Escucha y toca la letra","toca-silaba":"Escucha y toca la sílaba","falta-silaba":"¿Qué sílaba falta?",
   "elige-palabra":"¿Qué palabra es?","forma-palabra":"Forma la palabra","falta-letra":"¿Qué letra falta?","elige-dibujo":"Lee y toca el dibujo",
-  "ordena-frase":"Ordena la frase","trazo":"Repasa","dictado":"Escucha y escribe"};
+  "ordena-frase":"Ordena la frase","trazo":"Repasa","dictado":"Escucha y escribe","tijeras":"Las tijeras",
+  "contar-silabas":"¿Cuántas palmadas?","sonido-en":"¿Dónde suena?","empieza-por":"¿Cómo empieza?","elige-escena":"Escucha y elige","monta-escena":"Monta la escena"};
+
+// Escenas para la comprensión oral: quién + qué hace + con qué
+const SCENE_SUBJ = [
+  {k:"niño",t:"El niño",e:"👦"},{k:"niña",t:"La niña",e:"👧"},{k:"abuela",t:"La abuela",e:"👵"},
+  {k:"bebé",t:"El bebé",e:"👶"},{k:"perro",t:"El perro",e:"🐶"},{k:"gato",t:"El gato",e:"🐱"}
+];
+const SCENE_ACT = [
+  {k:"comer",t:"come",e:"🍴",who:["niño","niña","abuela","bebé","perro","gato"],objs:[{k:"manzana",t:"una manzana",e:"🍎"},{k:"plátano",t:"un plátano",e:"🍌"},{k:"pan",t:"pan",e:"🍞"},{k:"helado",t:"un helado",e:"🍦"}]},
+  {k:"beber",t:"bebe",e:"🥤",who:["niño","niña","abuela","bebé","perro","gato"],objs:[{k:"leche",t:"leche",e:"🥛"},{k:"agua",t:"agua",e:"💧"},{k:"zumo",t:"zumo",e:"🧃"}]},
+  {k:"jugar",t:"juega con",e:"🧸",who:["niño","niña","bebé","perro","gato"],objs:[{k:"pelota",t:"la pelota",e:"⚽"},{k:"globo",t:"un globo",e:"🎈"},{k:"coche",t:"un coche",e:"🚗"}]},
+  {k:"pintar",t:"pinta",e:"🖌️",who:["niño","niña","abuela"],objs:[{k:"casa",t:"una casa",e:"🏠"},{k:"sol",t:"un sol",e:"☀️"},{k:"flor",t:"una flor",e:"🌸"}]},
+  {k:"dormir",t:"duerme en",e:"💤",who:["niño","niña","abuela","bebé","perro","gato"],objs:[{k:"cama",t:"la cama",e:"🛏️"},{k:"sofá",t:"el sofá",e:"🛋️"}]}
+];
+// Palabras que se descargan como pictogramas (además de las de WORDS)
+const PICTO_EXTRA = [...new Set([...SCENE_SUBJ.map(x=>x.k),...SCENE_ACT.map(x=>x.k),...SCENE_ACT.flatMap(a=>a.objs.map(o=>o.k))])];
+
+// Separación en sílabas (aproximada; el docente puede corregirla)
+function silabear(word){
+  const w=word.toLowerCase(), V="aeiouáéíóúü", strong="aeoáéíóú";
+  const isV=c=>V.includes(c);
+  const insep=["pl","pr","bl","br","cl","cr","dr","tr","fl","fr","gl","gr","ch","ll","rr","kl","kr"];
+  const out=[]; let cur=""; let i=0;
+  const chars=[...w];
+  // posiciones de núcleos vocálicos (diptongos juntos)
+  const nuc=[]; for(let j=0;j<chars.length;j++){ if(isV(chars[j])){ const st=j; while(j+1<chars.length&&isV(chars[j+1])&&!(strong.includes(chars[j])&&strong.includes(chars[j+1]))) j++; nuc.push([st,j]); } }
+  if(nuc.length<=1) return [w];
+  let start=0;
+  for(let n=0;n<nuc.length-1;n++){
+    const a=nuc[n][1], b=nuc[n+1][0]; const cons=chars.slice(a+1,b).join("");
+    let cut;
+    if(cons.length===0) cut=b;
+    else if(cons.length===1) cut=a+1;
+    else if(cons.length===2) cut=insep.includes(cons)?a+1:a+2;
+    else if(cons.length===3) cut=insep.includes(cons.slice(1))?a+2:a+3;
+    else cut=a+3;
+    out.push(chars.slice(start,cut).join("")); start=cut;
+  }
+  out.push(chars.slice(start).join(""));
+  return out;
+}
