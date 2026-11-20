@@ -499,3 +499,10 @@ body.plus .scissors .cut.on i{background:#E0618A}
 .abc .esc-w{stroke-width:6}
 .opt .esc-t,.abc .esc-t,.piece .esc-t,.slot .esc-t,.word-card .esc-t{font-size:1.35em}
 .slots.words .esc-t,.slots.words ~ .tiles .esc-t{font-size:1.15em}
+button.pg{background:#fff;cursor:pointer;font:inherit} button.pg:hover{border-color:var(--primary)}
+.options.two-opt{grid-template-columns:repeat(2,1fr);max-width:44em}
+.opt.oral{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15em;font-size:1em;min-height:9em}
+.oral-ico{width:3em;height:3em;border-radius:50%;background:var(--soft);color:var(--primary);display:grid;place-items:center;font-size:1.3em}
+.oral-n{font-weight:700;color:var(--muted)}
+.oral-t{font-size:2em}
+.opt.oral.sel{border-color:var(--primary);background:#FAF8FF}

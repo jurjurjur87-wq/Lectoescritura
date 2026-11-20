@@ -3,10 +3,12 @@
    DATOS (se guardan en este equipo)
    ========================================================= */
 const LS_KEY = "lectoescritura.v1";
-const DEFAULT_SETTINGS = {celebration:"confeti", praise:true, look:"basico", pictos:"emoji", ownImages:[], lock:false, fixedGroup:null, lastBackup:null, lastAutoBackup:null};
+const DEFAULT_SETTINGS = {celebration:"confeti", praise:true, look:"plus", pictos:"auto", ownImages:[], lock:false, fixedGroup:null, lastBackup:null, lastAutoBackup:null};
 function blankDB(){ return {version:1,teachers:[],groups:[],students:[],records:[],custom:{words:[],phrases:[]},settings:Object.assign({},DEFAULT_SETTINGS)}; }
 function loadDB(){
-  try{ const s=localStorage.getItem(LS_KEY); if(s){ const d=JSON.parse(s); const r=Object.assign(blankDB(),d); r.settings=Object.assign({},DEFAULT_SETTINGS,d.settings||{}); if(d.settings&&d.settings.sensible&&!d.settings.look) r.settings.look="sensible"; delete r.settings.sensible; return r; } }catch(e){}
+  try{ const s=localStorage.getItem(LS_KEY); if(s){ const d=JSON.parse(s); const r=Object.assign(blankDB(),d); r.settings=Object.assign({},DEFAULT_SETTINGS,d.settings||{}); if(d.settings&&d.settings.sensible&&!d.settings.look) r.settings.look="sensible"; delete r.settings.sensible;
+      if(!r.settings.pv){ r.settings.pictos="auto"; r.settings.pv=2; }   // los pictogramas pasan a usarse solos si están descargados
+      return r; } }catch(e){}
   return blankDB();
 }
 let DB = loadDB();
@@ -56,7 +58,20 @@ function txt(st,text){ const t=show(st,text); return st.cfg.font==="cursiva" ? E
 function sensible(){ return DB.settings.look==="sensible" || !!(inStudent() && student() && student().helps.calma); }
 function plus(){ return DB.settings.look==="plus" && !sensible(); }
 
+/* Ejercicio en curso: si se abandona sin terminarlo bien, se guarda como fallo */
+function startPending(info){ flushPending(); S.pending=Object.assign({tries:0,touched:false,t0:performance.now()},info); }
+function flushPending(){
+  const p=S.pending; S.pending=null;
+  if(!p||S.demo||!S.studentId) return;
+  const tries=p.getTries?p.getTries():p.tries;
+  if(!(tries>0||p.touched)) return;
+  const item=p.ref?p.ref.key:p.item; if(!item) return;
+  DB.records.push({id:uid(),st:S.studentId,t:Date.now(),area:p.area,lvl:p.lvl,act:p.act,item,tries:Math.max(1,tries),acc:0,ms:Math.round(performance.now()-p.t0),fail:true});
+  save();
+}
+window.addEventListener("pagehide",flushPending);
 function record(area,lvl,item,tries,acc,ms,act){
+  S.pending=null;
   if(S.demo) return;
   DB.records.push({id:uid(),st:S.studentId,t:Date.now(),area,lvl,act,item,tries,acc:Math.round(acc),ms:Math.round(ms)});
   save();
@@ -92,7 +107,7 @@ function praise(name){
   if(rec.length) return AUDIO.play(pick(rec));
   tts(name?`¡Muy bien, ${name}!`:pick(["¡Muy bien!","¡Genial!","¡Eso es!","¡Fenomenal!"]));
 }
-function tryAgain(){ say("Prueba otra vez","aviso:otra"); }
+function tryAgain(){ if(S.pending) S.pending.tries++; say("Prueba otra vez","aviso:otra"); }
 
 /* =========================================================
    UTILIDADES DE INTERFAZ
@@ -151,7 +166,7 @@ function topBar(title,back,right=""){
 }
 function bindBack(fn){ const b=app.querySelector("[data-back]"); if(b) b.onclick=fn; }
 // Dibujo de una palabra: pictograma si está activado y descargado; si no, emoji
-function hasImg(word){ return PICTO.has(word) && (DB.settings.pictos==="arasaac" || (DB.settings.ownImages||[]).includes(word)); }
+function hasImg(word){ return PICTO.has(word) && (DB.settings.pictos!=="emoji" || (DB.settings.ownImages||[]).includes(word)); }
 function pic(word,emoji,cls="emoji"){
   if(hasImg(word)) return `<img class="${cls.replace(/\bemoji\b/,"picto")}" src="${PICTO.urls[word]}" alt="${esc(word)}" draggable="false">`;
   return `<span class="${cls}" role="img" aria-label="${esc(word)}">${emoji||""}</span>`;
@@ -225,7 +240,7 @@ function homeHero(){
   </div>`;
 }
 function screenGroups(force){
-  S.screenSeq=(S.screenSeq||0)+1;
+  flushPending(); S.screenSeq=(S.screenSeq||0)+1;
   S.studentId=null; S.demo=false;
   const fixed=DB.settings.lock && byId(DB.groups,DB.settings.fixedGroup);
   if(fixed && !force){ S.groupId=fixed.id; return screenStudents(); }
@@ -249,7 +264,7 @@ function screenGroups(force){
   app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{S.groupId=b.dataset.g; screenStudents();});
 }
 function screenStudents(){
-  S.screenSeq=(S.screenSeq||0)+1;
+  flushPending(); S.screenSeq=(S.screenSeq||0)+1;
   const g=byId(DB.groups,S.groupId); if(!g) return screenGroups(true);
   S.studentId=null; S.demo=false; applyLook();
   const locked=DB.settings.lock && DB.settings.fixedGroup===g.id;
@@ -269,7 +284,7 @@ function screenStudents(){
   app.querySelector("[data-demo]").onclick=()=>pinGate("Modo demostración: PIN de docente",()=>{S.demo=true; S.demoLevels=null; screenStudentHome();});
 }
 function screenStudentHome(){
-  S.screenSeq=(S.screenSeq||0)+1;
+  flushPending(); S.screenSeq=(S.screenSeq||0)+1;
   const st=student(); applyLook();
   const lr=LEVELS.lectura[st.cfg.lectura], es=LEVELS.escritura[st.cfg.escritura], eu=LEVELS.escucha[lvlOf(st,"escucha")];
   h(`${topBar("¡Hola!",true)}
@@ -306,9 +321,12 @@ function pools(st){
   let phr=PHRASES.filter(x=>ok(x.t.replace(/[.,]/g,""))); if(phr.length<3) phr=PHRASES;
   return {letters:enabledLetters(st), syl, words, phr, multi:words.filter(w=>w.s.length>1)};
 }
+const RECENT=[];   // lo que ha salido hace poco (en este equipo), para no repetirlo enseguida
+const keyOf=x=>typeof x==="string"?x:(x.w||x.t||x.key||JSON.stringify(x));
 function buildItems(area,lvl,st,n=ROUND){
   const P=pools(st); const acts=ACTIVITIES[area][lvl]; const items=[];
-  const pickN=(arr,m)=>{ const out=[]; let bag=[]; while(out.length<m){ if(!bag.length) bag=shuffle(arr); out.push(bag.pop()); } return out; };
+  const pickN=(arr,m)=>{ const fresh=arr.filter(x=>!RECENT.includes(keyOf(x))); const src=fresh.length>=Math.max(m,4)?fresh:arr;
+    const out=[]; let bag=[]; while(out.length<m){ if(!bag.length) bag=shuffle(src); const it=bag.pop(); out.push(it); RECENT.push(keyOf(it)); if(RECENT.length>60) RECENT.shift(); } return out; };
   for(let i=0;i<n;i++){
     const act=acts[i%acts.length];
     let it;
@@ -317,7 +335,11 @@ function buildItems(area,lvl,st,n=ROUND){
     else if(act==="falta-silaba"||act==="forma-palabra"){ it={act,word:pickN(P.multi.length?P.multi:WORDS.filter(w=>w.s.length>1),1)[0]}; it.key=it.word.w; }
     else if(act==="elige-palabra"||act==="falta-letra"){ it={act,word:pickN(P.words,1)[0]}; it.key=it.word.w; }
     else if(act==="elige-dibujo"||act==="ordena-frase"||act==="tijeras"){ it={act,phrase:pickN(P.phr,1)[0]}; it.key=it.phrase.t; }
-    else if(act==="contar-silabas"){ it={act,word:pickN(WORDS.filter(w=>w.s.length<=4),1)[0]}; it.key=it.word.w; }
+    else if(act==="contar-silabas"||act==="une-silabas"){ it={act,word:pickN(WORDS.filter(w=>w.s.length<=4&&(act==="contar-silabas"||w.s.length>=2)),1)[0]}; it.key=it.word.w; }
+    else if(act==="cuenta-palabras"){ it={act,phrase:pickN(PHRASES.filter(p=>p.t.split(" ").length<=6),1)[0]}; it.key=it.phrase.t; }
+    else if(act==="quita-silaba"){ it={act,word:pickN(WORDS.filter(w=>w.s.length>=3&&new Set(w.s).size===w.s.length),1)[0]}; it.key=it.word.w; }
+    else if(act==="da-la-vuelta"){ it={act,word:pickN(WORDS.filter(w=>w.s.length===2&&w.s[0]!==w.s[1]),1)[0]}; it.key=it.word.w; }
+    else if(act==="mas-larga"||act==="termina-en"||act==="intrusa"||act==="rima"){ it={act}; }
     else if(act==="sonido-en"||act==="empieza-por"){ it={act}; }
     else if(act==="elige-escena"||act==="monta-escena"){ it={act,scene:randomScene()}; it.key=sceneText(it.scene); }
     else if(act==="trazo"||act==="dictado"){
@@ -356,8 +378,10 @@ function runRound(area,lvl,items,again){
       "toca-letra":actChooseSound,"toca-silaba":actChooseSound,"falta-silaba":actMissing,"falta-letra":actMissing,
       "elige-palabra":actChooseWord,"elige-dibujo":actChoosePicture,"forma-palabra":actBuild,"ordena-frase":actBuild,
       "dictado":actBuild,"trazo":actTrace,"tijeras":actScissors,
-      "contar-silabas":actCountSyl,"sonido-en":actSound,"empieza-por":actSound,"elige-escena":actChooseScene,"monta-escena":actBuildScene
+      "contar-silabas":actCountSyl,"mas-larga":actLonger,"une-silabas":actBlend,"cuenta-palabras":actCountWords,"termina-en":actEnds,
+      "intrusa":actOddOne,"rima":actRhyme,"quita-silaba":actDelete,"da-la-vuelta":actReverse,"sonido-en":actSound,"empieza-por":actSound,"elige-escena":actChooseScene,"monta-escena":actBuildScene
     }[it.act];
+    if(it.act!=="trazo") startPending({area,lvl,act:it.act,ref:it});
     A(it,ctx);
   };
   next();
@@ -384,13 +408,13 @@ function actHeader(ctx,title){
   return `${topBar({lectura:"Leer",escritura:"Escribir",escucha:"Escuchar"}[ctx.area]+" · "+esc(title),true)}`;
 }
 /* Elección entre 3 opciones (base de varias actividades) */
-function choiceScreen(ctx,{title,prompt,options,correct,fontCss,emo,onSay,sayKey,four,wide,record:rec}){
+function choiceScreen(ctx,{title,prompt,options,correct,fontCss,emo,onSay,sayKey,four,wide,two,record:rec}){
   const st=student(); applyLook();
   h(`${actHeader(ctx,title)}
   <div class="main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt">${prompt}</div>
-    <div class="options ${four?"four":""} ${wide?"wide":""}">${options.map((o,i)=>`<button class="opt ${emo?"emo":""}" data-i="${i}" style="${fontCss?`font-family:${fontCss}`:""}">${o.html}</button>`).join("")}</div>
+    <div class="options ${four?"four":""} ${wide?"wide":""} ${two?"two-opt":""}">${options.map((o,i)=>`<button class="opt ${emo?"emo":""}" data-i="${i}" style="${fontCss?`font-family:${fontCss}`:""}">${o.html}</button>`).join("")}</div>
   </div>`);
   bindBack(screenStudentHome);
   let tries=0, locked=false; const t0=performance.now();
@@ -539,6 +563,120 @@ function actSound(it,ctx){
     onSay:()=>{ say(q); }, record:recFirst(ctx,it)});
   app.querySelectorAll(".opt-say").forEach(b=>b.addEventListener("click",e=>{ e.stopPropagation(); say(b.dataset.word,"palabra:"+b.dataset.word); },true));
 }
+/* Lee una lista de trozos con pausas (sílabas separadas) */
+function ttsSeq(parts,gap=450){
+  try{ if(!("speechSynthesis" in window)) return; speechSynthesis.cancel(); const st=inStudent()?student():null;
+    parts.forEach((t,i)=>setTimeout(()=>{ const u=new SpeechSynthesisUtterance(t); u.lang="es-ES"; if(VOICE) u.voice=VOICE; u.rate=st&&st.helps&&st.helps.lenta?.6:.8; speechSynthesis.speak(u); },i*(gap+350))); }catch(e){}
+}
+const clapsHTML=k=>`<span class="claps">${Array.from({length:k},()=>`<i>${ICON.clap}</i>`).join("")}</span><b>${k}</b>`;
+const picOpt=w=>`${pic(w.w,w.e,"emoji in-opt")}<span class="opt-say" data-word="${esc(w.w)}" role="button" aria-label="Escuchar ${esc(w.w)}">${ICON.speaker}</span>`;
+function bindOptSay(){ app.querySelectorAll(".opt-say").forEach(b=>b.addEventListener("click",e=>{ e.stopPropagation(); say(b.dataset.word,"palabra:"+b.dataset.word); },true)); }
+// Palabra más larga: dos dibujos con distinto número de sílabas
+function actLonger(it,ctx){
+  let a,b; for(let i=0;i<50;i++){ [a,b]=shuffle(WORDS).slice(0,2); if(Math.abs(a.s.length-b.s.length)>=1) break; }
+  const good=a.s.length>b.s.length?a:b; it.key="larga:"+good.w;
+  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+    prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Cuál tiene más palmadas?</span>`,
+    options:shuffle([a,b]).map(w=>({html:picOpt(w),ok:w===good})), emo:true, two:true,
+    onSay:()=>say("¿Cuál tiene más palmadas?"), record:recFirst(ctx,it)});
+  bindOptSay();
+}
+// Une las sílabas: se oyen separadas y se elige el dibujo
+function actBlend(it,ctx){
+  const w=it.word; const others=shuffle(WORDS.filter(x=>x!==w&&x.s[0]!==w.s[0])).slice(0,2);
+  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+    prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Escucha los trocitos y toca el dibujo</span>`,
+    options:shuffle([w,...others]).map(x=>({html:pic(x.w,x.e,"emoji in-opt"),ok:x===w})), emo:true,
+    onSay:()=>ttsSeq(w.s), record:recFirst(ctx,it)});
+}
+// Cuenta las palabras de una frase
+function actCountWords(it,ctx){
+  const t=it.phrase.t, n=t.replace(/[.,]/g,"").split(" ").length;
+  const opts=[...new Set([n,n-1,n+1,n+2].filter(x=>x>=1))].slice(0,4).sort((a,b)=>a-b);
+  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+    prompt:`${pic(it.phrase.k,it.phrase.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">¿Cuántas palabras tiene la frase?</span>`,
+    options:opts.map(k=>({html:clapsHTML(k),ok:k===n})), four:opts.length===4,
+    onSay:()=>ttsSeq(t.replace(/[.,]/g,"").split(" "),250), record:recFirst(ctx,it)});
+}
+// ¿Cómo termina? (última sílaba)
+function actEnds(it,ctx){
+  let good,bad,target;
+  for(let i=0;i<60;i++){ good=pick(WORDS.filter(w=>w.s.length>1)); target=stripAcc(good.s[good.s.length-1]);
+    const cand=WORDS.filter(w=>w!==good&&stripAcc(w.s[w.s.length-1])!==target&&!stripAcc(w.w).endsWith(target));
+    if(cand.length>=2){ bad=shuffle(cand).slice(0,2); break; } }
+  it.key="termina:"+target;
+  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+    prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Cuál termina en <b class="snd">«${esc(target)}»</b>?</span>`,
+    options:shuffle([good,...bad]).map(w=>({html:picOpt(w),ok:w===good})), emo:true,
+    onSay:()=>say(`¿Qué palabra termina en ${target}?`), record:recFirst(ctx,it)});
+  bindOptSay();
+}
+// La intrusa: tres empiezan igual y una no
+function actOddOne(it,ctx){
+  const groups={}; WORDS.forEach(w=>{ const k=stripAcc(w.s[0]); (groups[k]=groups[k]||[]).push(w); });
+  const keys=Object.keys(groups).filter(k=>groups[k].length>=3);
+  const k=pick(keys); const three=shuffle(groups[k]).slice(0,3);
+  const odd=pick(WORDS.filter(w=>stripAcc(w.s[0])!==k&&stripAcc(w.w)[0]!==k[0]));
+  it.key="intrusa:"+k;
+  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+    prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Tres empiezan igual. ¿Cuál es la diferente?</span>`,
+    options:shuffle([...three,odd]).map(w=>({html:picOpt(w),ok:w===odd})), emo:true, four:true,
+    onSay:()=>say("Tres palabras empiezan igual. ¿Cuál es la diferente?"), record:recFirst(ctx,it)});
+  bindOptSay();
+}
+// Rimas
+function actRhyme(it,ctx){
+  const groups={}; WORDS.forEach(w=>{ const k=rimaKey(w.w); if(k.length>=2) (groups[k]=groups[k]||[]).push(w); });
+  const keys=Object.keys(groups).filter(k=>groups[k].length>=2);
+  const k=pick(keys); const [base,good]=shuffle(groups[k]).slice(0,2);
+  const end2=x=>stripAcc(x).slice(-2);
+  const bad=shuffle(WORDS.filter(w=>rimaKey(w.w)!==k&&end2(w.w)!==end2(base.w))).slice(0,2);
+  it.key="rima:"+base.w;
+  choiceScreen(ctx,{title:ACT_NAMES[it.act],
+    prompt:`${pic(base.w,base.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Qué palabra rima con <b class="snd">${esc(base.w)}</b>?</span>`,
+    options:shuffle([good,...bad]).map(w=>({html:picOpt(w),ok:w===good})), emo:true,
+    onSay:()=>say(`¿Qué palabra rima con ${base.w}?`), record:recFirst(ctx,it)});
+  bindOptSay();
+}
+/* Opciones que se escuchan: tocar suena y marca; «Comprobar» responde */
+function oralChoice(ctx,it,{prompt,onSay,options}){
+  const st=student(); applyLook();
+  h(`${actHeader(ctx,ACT_NAMES[it.act])}
+  <div class="main">
+    ${dots(ctx.idx,ctx.n)}
+    <div class="prompt">${prompt}</div>
+    <div class="options">${options.map((o,i)=>`<button class="opt oral" data-i="${i}"><span class="oral-ico">${ICON.speaker}</span><span class="oral-n">${["A","B","C","D"][i]}</span><span class="oral-t">${txt(st,o.label)}</span></button>`).join("")}</div>
+    <div class="row" style="justify-content:center;margin-top:1.2em"><button class="btn ok big-btn" data-ok>${ICON.check} Comprobar</button></div>
+  </div>`);
+  bindBack(screenStudentHome);
+  let sel=-1, tries=0, locked=false; const t0=performance.now();
+  app.querySelector("[data-say]").onclick=onSay; setTimeout(onSay,350);
+  const btns=[...app.querySelectorAll(".opt.oral")];
+  btns.forEach(b=>b.onclick=()=>{ if(locked) return; sel=+b.dataset.i; btns.forEach(x=>x.classList.toggle("sel",x===b)); tts(options[sel].say); });
+  app.querySelector("[data-ok]").onclick=()=>{
+    if(locked) return; if(sel<0){ tts("Toca una de las respuestas"); return; }
+    tries++; const b=btns[sel];
+    if(options[sel].ok){ locked=true; b.classList.add("ok"); record(ctx.area,ctx.lvl,it.key,tries,tries===1?100:Math.max(0,100-50*(tries-1)),performance.now()-t0,it.act);
+      celebrate(); praise(); setTimeout(()=>ctx.done(tries===1),1400); }
+    else { b.classList.remove("bad"); void b.offsetWidth; b.classList.add("bad"); tryAgain(); }
+  };
+}
+// Quita una sílaba (la primera)
+function actDelete(it,ctx){
+  const w=it.word, s=w.s;
+  const right=s.slice(1).join(""), wrong1=s.slice(0,-1).join(""), wrong2=[s[0],...s.slice(2)].join("");
+  const opts=shuffle([{label:right,say:right,ok:true},{label:wrong1,say:wrong1},{label:wrong2,say:wrong2}].filter((o,i,a)=>a.findIndex(x=>x.label===o.label)===i));
+  oralChoice(ctx,it,{prompt:`${pic(w.w,w.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Si a <b class="snd">${esc(w.w)}</b> le quitas <b class="snd">«${esc(s[0])}»</b>, ¿qué queda?</span>`,
+    onSay:()=>say(`Si a ${w.w} le quitas ${s[0]}, ¿qué queda?`), options:opts});
+}
+// Da la vuelta (palabras de dos sílabas)
+function actReverse(it,ctx){
+  const w=it.word, [a,b]=w.s;
+  const right=b+a, wrong1=a+b, wrong2=(b+b!==right&&b+b!==wrong1)?b+b:a+a;
+  const opts=shuffle([{label:right,say:right,ok:true},{label:wrong1,say:wrong1},{label:wrong2,say:wrong2}]);
+  oralChoice(ctx,it,{prompt:`${pic(w.w,w.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Di <b class="snd">${esc(w.w)}</b> al revés: <b class="snd">${esc(a)}-${esc(b)}</b> → ?</span>`,
+    onSay:()=>{ say(`Di ${w.w} al revés`); }, options:opts});
+}
 function randomScene(){
   const a=pick(SCENE_ACT); const s=pick(SCENE_SUBJ.filter(x=>a.who.includes(x.k))); const o=pick(a.objs);
   return {s,a,o};
@@ -626,11 +764,11 @@ function actScissors(it,ctx){
 /* ---------- ESCRIBIR ---------- */
 function letterStats(stId){
   const done={};
-  DB.records.filter(r=>r.st===stId&&r.area==="escritura"&&r.lvl===1).forEach(r=>{done[r.item]=Math.max(done[r.item]||0,r.acc)});
+  DB.records.filter(r=>r.st===stId&&r.area==="escritura"&&r.lvl===1&&!r.fail).forEach(r=>{done[r.item]=Math.max(done[r.item]||0,r.acc)});
   return done;
 }
 function screenAlphabet(){
-  S.screenSeq=(S.screenSeq||0)+1;
+  flushPending(); S.screenSeq=(S.screenSeq||0)+1;
   const st=student(); applyLook(); const en=new Set(enabledLetters(st));
   const done=S.demo?{}:letterStats(st.id); const fcss=fontOf(st).css;
   h(`${topBar("Elige una letra",true)}
@@ -699,6 +837,8 @@ function traceScreen(o){
   const opts={text,guide:app.querySelector("[data-guide]"),ink:app.querySelector("[data-ink]"),demo:app.querySelector("[data-demo-c]"),
     tol,colors,onProgress,onSuccess,say:m=>tts(m),still:sens,fontCss:font.css,layout:escolar?ESCOLAR.layout:null};
   const eng=ordered?createStrokeEngine(opts):createCoverageEngine(opts);
+  startPending({area:"escritura",lvl:o.lvl,act:o.act,item:o.text,getTries:()=>eng.errors});
+  app.querySelector("[data-ink]").addEventListener("pointerdown",()=>{ if(S.pending) S.pending.touched=true; });
   bindBack(()=>{ cleanup(); o.onBack(); });
   app.querySelector("[data-say]").onclick=o.speak;
   app.querySelector("[data-clear]").onclick=()=>{ eng.clear(); msg.textContent=ordered?"Empieza en el punto verde y sigue la flecha":"Repasa la letra con el dedo"; };
@@ -708,6 +848,7 @@ function traceScreen(o){
   const ro=new ResizeObserver(()=>{ const r=board.getBoundingClientRect(); if(r.width<10||r.height<10) return; eng.resize(r.width,r.height);
     if(first){ first=false; setTimeout(()=>{ o.speak(); if(ordered&&o.autoDemo) setTimeout(()=>eng.demo(),900); },300); } });
   function cleanup(){ ro.disconnect(); eng.destroy(); }
+  const _back=app.querySelector("[data-back]"); if(_back) _back.addEventListener("click",flushPending,true);
   document.fonts.load(`100px ${font.css}`).then(()=>ro.observe(board));
 }
 
@@ -760,7 +901,7 @@ function backupBanner(){
   return `<div class="banner">${ICON.lock}<span>${days===null?"Todavía no has hecho ninguna copia de seguridad.":`Hace ${days} días de la última copia de seguridad.`}</span><button class="btn small" data-gobackup>Hacer copia</button></div>`;
 }
 function teacherPanel(){
-  S.screenSeq=(S.screenSeq||0)+1;
+  flushPending(); S.screenSeq=(S.screenSeq||0)+1;
   const t=me(); if(!t) return screenGroups(true);
   const oldMain=app.querySelector(".teacher .main"); const keep=oldMain && S.tTabPrev===S.tTab+"|"+(S.tStudent||"") ? oldMain.scrollTop : 0;
   S.tTabPrev=S.tTab+"|"+(S.tStudent||"");
@@ -924,9 +1065,10 @@ function weekStart(t){ const d=new Date(t); d.setHours(0,0,0,0); const wd=(d.get
 function summarize(recs){
   const Lr=recs.filter(r=>r.area==="lectura"), E=recs.filter(r=>r.area==="escritura"), U=recs.filter(r=>r.area==="escucha");
   return {
-    escu:U.length?Math.round(U.filter(r=>r.tries===1).length/U.length*100):null, nU:U.length,
+    escu:U.length?Math.round(U.filter(r=>r.tries===1&&!r.fail).length/U.length*100):null, nU:U.length,
     days:new Set(recs.map(r=>new Date(r.t).toDateString())).size,
-    lect:Lr.length?Math.round(Lr.filter(r=>r.tries===1).length/Lr.length*100):null, nL:Lr.length,
+    lect:Lr.length?Math.round(Lr.filter(r=>r.tries===1&&!r.fail).length/Lr.length*100):null, nL:Lr.length,
+    fails:recs.filter(r=>r.fail).length,
     escr:E.length?Math.round(E.reduce((a,r)=>a+r.acc,0)/E.length):null, nE:E.length,
     last:recs.length?Math.max(...recs.map(r=>r.t)):null
   };
@@ -962,10 +1104,10 @@ function studentAnalysis(s){
   const recs=DB.records.filter(r=>r.st===s.id); const sm=summarize(recs); const wk=weekly(recs,8);
   const per=area=>{const m={}; recs.filter(r=>r.area===area&&r.lvl===1).forEach(r=>{(m[r.item]=m[r.item]||[]).push(r)}); return m;};
   const pl1=per("lectura"), pe1=per("escritura");
-  const cellL=l=>{const a=pl1[l]; if(!a) return null; return Math.round(a.filter(r=>r.tries===1).length/a.length*100);};
+  const cellL=l=>{const a=pl1[l]; if(!a) return null; return Math.round(a.filter(r=>r.tries===1&&!r.fail).length/a.length*100);};
   const cellE=l=>{const a=pe1[l]; if(!a) return null; return Math.round(a.reduce((x,r)=>x+r.acc,0)/a.length);};
   const items=[...new Set(recs.filter(r=>r.lvl>1).map(r=>r.area+"|"+r.item))].map(k=>{const [area,item]=k.split("|");const rs=recs.filter(r=>r.area===area&&r.item===item);
-    const v=area==="lectura"?rs.filter(r=>r.tries===1).length/rs.length*100:rs.reduce((a,r)=>a+r.acc,0)/rs.length; return {area,item,v:Math.round(v),n:rs.length};});
+    const v=area==="escritura"?rs.reduce((a,r)=>a+r.acc,0)/rs.length:rs.filter(r=>r.tries===1&&!r.fail).length/rs.length*100; return {area,item,v:Math.round(v),n:rs.length};});
   const hardest=items.filter(x=>x.v<70).sort((a,b)=>a.v-b.v).slice(0,10);
   const mastered=LETTERS.filter(l=>(cellL(l)??-1)>=80&&(cellE(l)??-1)>=80);
   const pending=LETTERS.filter(l=>{const a=cellL(l),b=cellE(l); return (a!=null&&a<50)||(b!=null&&b<50);});
@@ -995,7 +1137,7 @@ function studentProgress(body,s){
     <span class="chip">Escuchar: ${LEVELS.escucha[lvlOf(s,"escucha")]}</span><span class="chip">Lectura: ${LEVELS.lectura[s.cfg.lectura]}</span><span class="chip">Escritura: ${LEVELS.escritura[s.cfg.escritura]}</span><span class="chip">${FONTS[s.cfg.font].label}</span>
     <span style="flex:1"></span><button class="btn primary small" data-report>${ICON.print} Informe</button></div>
     <div class="stats">
-      <div><div class="muted">Días de uso</div><b>${sm.days}</b></div>
+      <div><div class="muted">Días de uso</div><b>${sm.days}</b><small class="muted">${sm.fails} ejercicios sin terminar bien</small></div>
       <div><div class="muted">Escuchar · aciertos a la primera</div><b>${sm.escu==null?"—":sm.escu+" %"}</b><small class="muted">${sm.nU} ejercicios</small></div>
       <div><div class="muted">Lectura · aciertos a la primera</div><b>${sm.lect==null?"—":sm.lect+" %"}</b><small class="muted">${sm.nL} ejercicios</small></div>
       <div><div class="muted">Escritura · precisión media</div><b>${sm.escr==null?"—":sm.escr+" %"}</b><small class="muted">${sm.nE} ejercicios</small></div>
@@ -1004,7 +1146,7 @@ function studentProgress(body,s){
   <div class="panel">${heat(A.cellL,"Reconocimiento de letras (lectura)")}${heat(A.cellE,"Trazado de letras (escritura)")}${heatLegend}</div>
   ${A.hardest.length?`<div class="panel"><h3>Lo que más le cuesta (sílabas, palabras y frases)</h3>${A.hardest.map(x=>`<span class="chip pct" style="background:${pctColor(x.v)}">${{lectura:"Lectura",escritura:"Escritura",escucha:"Escuchar"}[x.area]} · ${esc(x.item)} · ${x.v} %</span>`).join(" ")}</div>`:""}
   <div class="panel"><h3>Actividad reciente</h3>${recs.length?`<div class="tw"><table><thead><tr><th>Fecha</th><th>Área</th><th>Actividad</th><th>Ejercicio</th><th>Intentos</th><th>Resultado</th></tr></thead><tbody>
-    ${recs.slice(-15).reverse().map(r=>`<tr><td>${new Date(r.t).toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</td><td>${{lectura:"Lectura",escritura:"Escritura",escucha:"Escuchar"}[r.area]}</td><td>${ACT_NAMES[r.act]||LEVELS[r.area][r.lvl]}</td><td><b>${esc(r.item)}</b></td><td>${r.tries}</td><td>${r.acc} %</td></tr>`).join("")}
+    ${recs.slice(-15).reverse().map(r=>`<tr><td>${new Date(r.t).toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</td><td>${{lectura:"Lectura",escritura:"Escritura",escucha:"Escuchar"}[r.area]}</td><td>${ACT_NAMES[r.act]||LEVELS[r.area][r.lvl]}</td><td><b>${esc(r.item)}</b></td><td>${r.tries}</td><td>${r.fail?`<span class="chip pct" style="background:#F8D3D1">Sin terminar</span>`:r.acc+" %"}</td></tr>`).join("")}
   </tbody></table></div>`:`<div class="empty">Sin actividad.</div>`}</div>`);
   body.querySelector("[data-backp]").onclick=()=>{S.tStudent=null;teacherPanel();};
   body.querySelector("[data-report]").onclick=()=>openReport(s);
@@ -1031,6 +1173,7 @@ function openReport(s){
       <div><h2>Resumen</h2><table class="r-t">
         <tr><td>Periodo</td><td>${first?fmtDate(first)+" – "+fmtDate(Date.now()):"Sin actividad"}</td></tr>
         <tr><td>Días de uso</td><td>${A.sm.days}</td></tr>
+        <tr><td>Ejercicios sin terminar bien</td><td>${A.sm.fails}</td></tr>
         <tr><td>Escuchar: aciertos a la primera</td><td>${A.sm.escu==null?"—":A.sm.escu+" %"} (${A.sm.nU} ejercicios)</td></tr>
         <tr><td>Lectura: aciertos a la primera</td><td>${A.sm.lect==null?"—":A.sm.lect+" %"} (${A.sm.nL} ejercicios)</td></tr>
         <tr><td>Escritura: precisión media</td><td>${A.sm.escr==null?"—":A.sm.escr+" %"} (${A.sm.nE} ejercicios)</td></tr>
@@ -1228,6 +1371,29 @@ async function autoBackup(){
   }catch(e){}
 }
 
+/* Elegir a mano entre los pictogramas de ARASAAC para una palabra */
+function chooseArasaac(word,done){
+  modal(`<h3>Pictograma para «${esc(word)}»</h3><p class="muted small-t" data-st>Buscando en ARASAAC…</p><div class="picto-grid" data-g></div>
+    <div class="row end"><input type="text" class="sel" data-q value="${esc(word)}" style="flex:1"><button class="btn small" data-s>Buscar</button><button class="btn" data-x>Cerrar</button></div>`,(m,close)=>{
+    const g=m.querySelector("[data-g]"), stEl=m.querySelector("[data-st]");
+    const search=async q=>{
+      g.innerHTML=""; stEl.textContent="Buscando en ARASAAC…";
+      try{
+        const list=await PICTO.searchArasaac(q);
+        if(!list.length){ stEl.textContent="No hay resultados. Prueba con otra palabra."; return; }
+        stEl.textContent="Toca el que mejor encaje:";
+        g.innerHTML=list.slice(0,18).map(p=>`<button class="pg" data-id="${p._id}"><div class="pg-img"><img src="${PICTO.thumb(p._id)}" alt=""></div><div class="small-t">${esc((p.keywords&&p.keywords[0]&&p.keywords[0].keyword)||"")}</div></button>`).join("");
+        g.querySelectorAll("[data-id]").forEach(b=>b.onclick=async()=>{ stEl.textContent="Guardando…";
+          try{ await PICTO.saveId(word,+b.dataset.id); DB.settings.pickedPictos=Object.assign({},DB.settings.pickedPictos,{[word]:+b.dataset.id});
+            DB.settings.ownImages=(DB.settings.ownImages||[]).filter(x=>x!==word); save(); close(); toast("Pictograma elegido"); done&&done(); }
+          catch(e){ stEl.textContent="No se ha podido descargar. Comprueba la conexión."; } });
+      }catch(e){ stEl.textContent="No se ha podido conectar con ARASAAC. Comprueba la conexión a internet."; }
+    };
+    m.querySelector("[data-s]").onclick=()=>search(m.querySelector("[data-q]").value.trim()||word);
+    m.querySelector("[data-x]").onclick=close; search(word);
+  });
+}
+
 /* ---- Ajustes del equipo ---- */
 function pictoItems(){
   const m=new Map(); WORDS.forEach(w=>m.set(w.w,w.e));
@@ -1259,11 +1425,11 @@ function tabSettings(body){
   <div class="panel"><h3>Voz de ánimo</h3>
     ${opt("praise","1",st.praise!==false,"Decir «¡Muy bien!» al acertar","Si lo desactivas, la voz solo lee los enunciados. Puedes grabar tus propios ánimos en la pestaña Audios.","checkbox")}</div>
   <div class="panel"><h3>Dibujos</h3>
-    ${opt("pic","emoji",st.pictos!=="arasaac","Emojis","Funcionan siempre, sin descargar nada.")}
-    ${opt("pic","arasaac",st.pictos==="arasaac","Pictogramas ARASAAC","Hay que descargarlos una vez con internet; después funcionan sin conexión. Si falta alguno, se usa el emoji.")}
+    ${opt("pic","auto",st.pictos!=="emoji","Pictogramas ARASAAC cuando estén descargados","Se usan solos en todas las actividades. Si falta alguno, se usa el emoji. Se descargan una vez con internet y quedan guardados en este equipo.")}
+    ${opt("pic","emoji",st.pictos==="emoji","Solo emojis","No se usan pictogramas aunque estén descargados (las fotos propias sí se usan).")}
     <div class="row"><button class="btn small" data-dl>Descargar pictogramas</button><span class="muted small-t" data-dlst>${pictoList().filter(w=>PICTO.has(w)).length} de ${pictoList().length} descargados</span></div>
     <details style="margin-top:.8em" ${S.openPictos?"open":""} data-pdet><summary class="small-t"><b>Ver y cambiar dibujos</b></summary><div class="picto-grid">${pictoItems().map(w=>`<div class="pg"><div class="pg-img">${PICTO.has(w.k)?`<img src="${PICTO.urls[w.k]}" alt="">`:`<span>${w.e}</span>`}</div><div class="small-t">${esc(w.k)}</div>
-      <label class="btn small">Cambiar<input type="file" accept="image/*" data-pw="${esc(w.k)}" hidden></label></div>`).join("")}</div></details>
+      <div class="row" style="justify-content:center;gap:.3em"><button class="btn small" data-choose="${esc(w.k)}">ARASAAC</button><label class="btn small">Foto<input type="file" accept="image/*" data-pw="${esc(w.k)}" hidden></label></div></div>`).join("")}</div></details>
     <p class="muted small-t">Pictogramas: Sergio Palao. Origen: ARASAAC (arasaac.org). Licencia: CC BY-NC-SA. Propiedad: Gobierno de Aragón (España).</p></div>
   <div class="panel"><h3>Bloqueo del aula</h3>
     ${opt("lock","1",!!st.lock,"Bloquear la salida","El alumnado no puede cambiar de clase ni cerrar la aplicación (versión de escritorio) sin el PIN de un docente. El modo demostración también pide PIN.","checkbox")}
@@ -1279,42 +1445,64 @@ function tabSettings(body){
   body.querySelector("[data-fixed]").onchange=e=>{st.fixedGroup=e.target.value||null; save(); toast("Guardado");};
   body.querySelector("[data-test]").onclick=()=>{ celebrate(); praise(); };
   const det=body.querySelector("[data-pdet]"); if(det) det.ontoggle=()=>{S.openPictos=det.open;};
+  body.querySelectorAll("[data-choose]").forEach(b=>b.onclick=()=>chooseArasaac(b.dataset.choose,rerender));
   body.querySelectorAll("[data-pw]").forEach(inp=>inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; await PICTO.set(inp.dataset.pw,f);
     st.ownImages=[...new Set([...(st.ownImages||[]),inp.dataset.pw])]; save(); toast("Dibujo cambiado"); rerender(); });
   body.querySelector("[data-dl]").onclick=async()=>{
     const stEl=body.querySelector("[data-dlst]"); let ok=0, fail=0;
-    const list=pictoList().filter(w=>!(st.ownImages||[]).includes(w));
-    for(const w of list){
-      stEl.textContent=`Descargando… ${ok+fail+1} de ${list.length}`;
-      try{ await PICTO.fetchArasaac(w); ok++; }catch(e){ fail++; if(fail>=3&&ok===0){ stEl.textContent="No se ha podido conectar con ARASAAC. Comprueba la conexión a internet."; return; } }
-    }
+    const list=pictoList().filter(w=>!(st.ownImages||[]).includes(w)&&!(st.pickedPictos||{})[w]);
+    let i=0, stop=false;
+    const worker=async()=>{ while(i<list.length && !stop){ const w=list[i++];
+      try{ await PICTO.fetchArasaac(w); ok++; }catch(e){ fail++; if(fail>=4&&ok===0){ stop=true; } }
+      stEl.textContent=`Descargando… ${ok+fail} de ${list.length}`; } };
+    await Promise.all([worker(),worker(),worker(),worker()]);
+    if(stop){ stEl.textContent="No se ha podido conectar con ARASAAC. Comprueba la conexión a internet."; return; }
     st.pictos="arasaac"; save(); toast(`Pictogramas descargados: ${ok}${fail?` (${fail} sin encontrar)`:""}`); rerender();
   };
 }
 
 /* ---- Docentes ---- */
 function tabTeachers(body){
+  const admins=DB.teachers.filter(t=>t.admin);
   body.innerHTML=`<div class="panel"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Docentes</h3><button class="btn primary" data-new>Nuevo docente</button></div>
-  ${DB.teachers.map(t=>`<div class="list-item"><span class="av">👩‍🏫</span><div class="grow"><b>${esc(t.name)}</b> ${t.admin?`<span class="chip">Administración</span>`:""}
+  ${DB.teachers.map(t=>`<div class="list-item"><span class="av">👩‍🏫</span><div class="grow"><b>${esc(t.name)}</b> ${t.admin?`<span class="chip">Administración</span>`:""} ${t.id===S.teacherId?`<span class="chip">Tú</span>`:""}
     <div class="muted small-t">${DB.groups.filter(g=>(g.teachers||[]).includes(t.id)).map(g=>esc(g.name)).join(", ")||"Sin clases asignadas"}</div></div>
-    <button class="btn small" data-pin="${t.id}">Cambiar PIN</button>${t.id!==S.teacherId?`<button class="btn small" data-del="${t.id}">Eliminar</button>`:""}</div>`).join("")}</div>
-  <p class="muted" style="padding:0 .5em">Las clases se comparten desde «Clases → Editar»: marca qué docentes pueden verlas (por ejemplo, tutora + PT + AL).</p>`;
-  const form=t=>modal(`<h3>${t?"Cambiar PIN de "+esc(t.name):"Nuevo docente"}</h3><div class="form">
-    ${t?"":`<label>Nombre<input type="text" data-n></label><label class="check"><input type="checkbox" data-adm> Administración (ve todas las clases)</label>`}
-    <label>PIN de 4 cifras<input type="password" inputmode="numeric" maxlength="4" data-p></label></div>
+    <button class="btn small" data-edit="${t.id}">Editar</button>
+    ${t.id===S.teacherId&&t.admin?`<button class="btn small" data-transfer>Transferir administración</button>`:""}
+    ${!t.admin&&t.id!==S.teacherId?`<button class="btn small" data-del="${t.id}">Eliminar</button>`:""}</div>`).join("")}</div>
+  <p class="muted" style="padding:0 .5em">Siempre tiene que haber al menos un docente con administración. Para borrar a quien administra, primero transfiere la administración a otro docente. Las clases se comparten desde «Clases → Editar» (por ejemplo, tutora + PT + AL).</p>`;
+  const form=t=>modal(`<h3>${t?"Editar docente":"Nuevo docente"}</h3><div class="form">
+    <label>Nombre<input type="text" data-n value="${t?esc(t.name):""}"></label>
+    ${t?"":`<label class="check"><input type="checkbox" data-adm> Administración (ve todas las clases)</label>`}
+    <label>${t?"Nuevo PIN (déjalo vacío para no cambiarlo)":"PIN de 4 cifras"}<input type="password" inputmode="numeric" maxlength="4" data-p></label></div>
     <div class="row end"><button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Guardar</button></div>`,(m,close)=>{
       m.querySelector("[data-x]").onclick=close;
       m.querySelector("[data-ok]").onclick=()=>{
-        const p=m.querySelector("[data-p]").value.trim(); if(!/^\d{4}$/.test(p)) return toast("El PIN debe tener 4 cifras");
-        if(DB.teachers.some(x=>x.pin===p&&x!==t)) return toast("Ese PIN ya lo usa otro docente");
-        if(t){ t.pin=p; } else { const n=m.querySelector("[data-n]").value.trim(); if(!n) return toast("Escribe el nombre"); DB.teachers.push({id:uid(),name:n,pin:p,admin:m.querySelector("[data-adm]").checked}); }
+        const n=m.querySelector("[data-n]").value.trim(), p=m.querySelector("[data-p]").value.trim();
+        if(!n) return toast("Escribe el nombre");
+        if((p||!t) && !/^\d{4}$/.test(p)) return toast("El PIN debe tener 4 cifras");
+        if(p && DB.teachers.some(x=>x.pin===p&&x!==t)) return toast("Ese PIN ya lo usa otro docente");
+        if(t){ t.name=n; if(p) t.pin=p; } else DB.teachers.push({id:uid(),name:n,pin:p,admin:m.querySelector("[data-adm]").checked});
         save(); close(); teacherPanel();
       };
     });
   body.querySelector("[data-new]").onclick=()=>form(null);
-  body.querySelectorAll("[data-pin]").forEach(b=>b.onclick=()=>form(byId(DB.teachers,b.dataset.pin)));
-  body.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const t=byId(DB.teachers,b.dataset.del); confirmBox(`¿Eliminar a ${t.name}? Sus clases se mantienen.`,"Eliminar",()=>{
-    DB.teachers=DB.teachers.filter(x=>x.id!==t.id); DB.groups.forEach(g=>g.teachers=(g.teachers||[]).filter(x=>x!==t.id)); save(); teacherPanel(); });});
+  body.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>form(byId(DB.teachers,b.dataset.edit)));
+  const tr=body.querySelector("[data-transfer]"); if(tr) tr.onclick=()=>{
+    const others=DB.teachers.filter(x=>x.id!==S.teacherId);
+    if(!others.length) return toast("Primero da de alta a otro docente");
+    modal(`<h3>Transferir la administración</h3><p class="muted">Elige a quién pasa la administración. Tú seguirás como docente normal (con tus clases) y después podrán borrarte si hace falta.</p>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(9em,1fr))">${others.map(x=>`<button class="tile" data-to="${x.id}" style="min-height:5em"><span style="font-size:2em">👩‍🏫</span>${esc(x.name)}</button>`).join("")}</div>
+      <div class="row end"><button class="btn" data-x>Cancelar</button></div>`,(m,close)=>{
+      m.querySelector("[data-x]").onclick=close;
+      m.querySelectorAll("[data-to]").forEach(b=>b.onclick=()=>{ const to=byId(DB.teachers,b.dataset.to);
+        confirmBox(`¿Pasar la administración a ${to.name}? Dejarás de ser administrador.`,"Transferir",()=>{
+          to.admin=true; me().admin=false; save(); close(); toast(`Ahora administra ${to.name}`); S.tTab="grupos"; teacherPanel(); }); });
+    });
+  };
+  body.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const t=byId(DB.teachers,b.dataset.del); if(!t||t.admin) return;
+    confirmBox(`¿Eliminar a ${t.name}? Sus clases se mantienen.`,"Eliminar",()=>{
+      DB.teachers=DB.teachers.filter(x=>x.id!==t.id); DB.groups.forEach(g=>g.teachers=(g.teachers||[]).filter(x=>x!==t.id)); save(); teacherPanel(); });});
 }
 
 /* =========================================================

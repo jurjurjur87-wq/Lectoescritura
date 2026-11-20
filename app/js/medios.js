@@ -76,16 +76,35 @@ const PICTO = {
   count() { return Object.keys(this.urls).length; },
   async set(w, blob) { await IDB.put("pictos", w, blob); if (this.urls[w]) URL.revokeObjectURL(this.urls[w]); this.urls[w] = URL.createObjectURL(blob); },
   async remove(w) { await IDB.del("pictos", w); if (this.urls[w]) URL.revokeObjectURL(this.urls[w]); delete this.urls[w]; },
-  async fetchArasaac(word) {
-    const r = await fetch(`https://api.arasaac.org/v1/pictograms/es/bestsearch/${encodeURIComponent(word)}`);
-    if (!r.ok) throw new Error("no encontrado");
-    const list = await r.json(); if (!list.length) throw new Error("no encontrado");
-    const id = list[0]._id;
+  // Busca en ARASAAC (español)
+  async searchArasaac(q) {
+    const r = await fetch(`https://api.arasaac.org/v1/pictograms/es/search/${encodeURIComponent(q)}`);
+    if (r.status === 404) return [];
+    if (!r.ok) throw new Error("sin conexión");
+    return await r.json();
+  },
+  thumb(id) { return `https://static.arasaac.org/pictograms/${id}/${id}_300.png`; },
+  async saveId(word, id) {
     let img = await fetch(`https://api.arasaac.org/v1/pictograms/${id}?resolution=300&download=false`).catch(() => null);
-    if (!img || !img.ok) img = await fetch(`https://static.arasaac.org/pictograms/${id}/${id}_300.png`);
+    if (!img || !img.ok) img = await fetch(this.thumb(id));
     if (!img.ok) throw new Error("sin imagen");
     await this.set(word, await img.blob());
-    return id;
+  },
+  // Elige el pictograma cuya palabra clave coincide exactamente (no el primero que salga)
+  async fetchArasaac(word) {
+    const norm = t => (t || "").toLowerCase().trim();
+    let list = [];
+    try { list = await this.searchArasaac(word); } catch (e) { throw e; }
+    const exact = list.filter(p => (p.keywords || []).some(k => norm(k.keyword) === norm(word)));
+    const pref = exact.filter(p => !p.schematic && !p.violence && !p.sex);
+    let best = (pref[0] || exact[0]);
+    if (!best) {
+      const r = await fetch(`https://api.arasaac.org/v1/pictograms/es/bestsearch/${encodeURIComponent(word)}`);
+      if (r.ok) { const l = await r.json(); best = l[0]; }
+    }
+    if (!best) throw new Error("no encontrado");
+    await this.saveId(word, best._id);
+    return best._id;
   },
 };
 
