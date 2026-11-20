@@ -80,6 +80,10 @@ const TRAZOS = (() => {
   function glyph(ch) {
     if (low[ch]) return low[ch];
     if (up[ch]) return up[ch];
+    if (ch === "ü" || ch === "Ü") {                                 // diéresis: dos puntos
+      const g = glyph(ch === "ü" ? "u" : "U"), cx = g.w / 2, y = ch === "ü" ? 30 : -14;
+      return { w: g.w, s: [...g.s, dot(cx - 9, y), dot(cx + 9, y)] };
+    }
     const base = ACC[ch];
     if (!base) return null;
     const g = glyph(base), cx = g.w / 2, isUp = base === base.toUpperCase();
@@ -121,6 +125,11 @@ const ESCOLAR = (() => {
   const ACC = { "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u" };
   function glyph(ch) {
     if (D[ch]) return D[ch];
+    if (ch === "ü") {                                                    // diéresis: dos puntos
+      const g = D.u, xs = g.m.filter(p => p[1] >= 50 && p[1] <= 100).map(p => p[0]);
+      const cx = (Math.min(...xs) + Math.max(...xs)) / 2 + 6;
+      return Object.assign({}, g, { x: [[[cx - 10, 36]], [[cx + 10, 36]]] });
+    }
     const base = ACC[ch]; if (!base) return null;
     const g = D[base];
     const xs = g.m.filter(p => p[1] >= 50 && p[1] <= 100).map(p => p[0]);
@@ -166,9 +175,9 @@ const ESCOLAR = (() => {
   // Texto completo: las palabras en minúscula se dibujan; signos, con la fuente
   function html(text) {
     const escH = t => t.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-    return `<span class="esc-t" aria-label="${escH(text)}">` + text.split(/([a-zñáéíóú]+)/).map(part => {
+    return `<span class="esc-t" aria-label="${escH(text)}">` + text.split(/([a-zñáéíóúü]+)/).map(part => {
       if (!part) return "";
-      if (/^[a-zñáéíóú]+$/.test(part) && supports(part)) return svgWord(part);
+      if (/^[a-zñáéíóúü]+$/.test(part) && supports(part)) return svgWord(part);
       return `<span class="esc-o">${escH(part)}</span>`;
     }).join("") + `</span>`;
   }

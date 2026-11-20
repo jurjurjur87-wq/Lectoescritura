@@ -15,7 +15,9 @@ Pensada para Infantil, Primaria y alumnado con necesidades específicas: cada al
 ## Qué incluye (versión 0.3)
 
 ### Para el alumnado
-El alumno entra sin saber leer: toca su clase y después su animal. Tiene tres áreas, cada una con su nivel.
+El alumno entra sin saber leer: toca su clase y después su animal. Tiene tres áreas. Al entrar en cada una aparece **todo el catálogo de actividades**, cada una con su nombre y una pestaña con su nivel (sílabas, sonidos, palabras…). Las del nivel del alumno salen marcadas con una estrella, pero puede abrir cualquiera.
+
+En los juegos con dibujos que se escuchan, tocar un dibujo lo marca y lo dice en voz alta; la respuesta se da con **Comprobar**.
 
 **Escuchar** (conciencia fonológica y comprensión oral)
 1. **Sílabas**: ¿cuántas palmadas?, la palabra más larga, une las sílabas, cuenta las palabras de una frase.
@@ -41,7 +43,7 @@ El alumno entra sin saber leer: toca su clase y después su animal. Tiene tres �
 - La **letra escolar** (solo minúsculas, con rabito de entrada) se usa en toda la app: tarjetas, opciones, palabras y frases, que van enteras en minúscula. Las palabras se escriben enlazadas, y los puntos, tildes y rayas se hacen al final.
 
 ### Contenidos
-- Banco de **unas 260 palabras** con sílabas y dibujo, **más de 100 frases** y **unas 300 escenas**. Las actividades se generan al azar y la app evita repetir lo que ha salido hace poco.
+- Banco de **casi 400 palabras** con sílabas y dibujo, **unas 185 frases** y **más de 750 escenas**. Las actividades se generan al azar y la app evita repetir lo que ha salido hace poco.
 - **Palabras y frases propias** del docente (nombres del alumnado, vocabulario del tema…), con separación en sílabas automática y foto opcional.
 - **Pictogramas de ARASAAC**: se descargan una vez y se usan solos en todas las actividades. Si falta alguno, se usa el emoji. Cada dibujo se puede cambiar eligiendo otro pictograma o una foto propia.
 - **Audios grabados por el docente** para letras, sílabas, palabras, frases y ánimos. Si no hay grabación, se usa la voz del equipo.

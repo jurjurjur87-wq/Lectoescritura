@@ -34,6 +34,21 @@ cas-ti-llo 🏰|es-cue-la 🏫|hos-pi-tal 🏥|tien-da 🏪|cir-co 🎪|fe-ria �
 sa-xo-fón 🎷|mi-cró-fo-no 🎤|pin-cel 🖌️|ti-za 🖍️|ces-ta 🧺
 ca-ra 🙂|ca-ri-ño 🤗|be-so 😘|ri-sa 😂|sue-ño 😴|llan-to 😢|fies-ta 🎉|mú-si-ca 🎵|co-ra-zón ❤️
 pe-lu-che 🧸|ar-co 🏹|di-ne-ro 💰|bu-fan-da 🧣|guan-te 🧤|cha-que-ta 🧥
+pin-güi-no 🐧|pá-ja-ro 🐦|á-gui-la 🦅|fla-men-co 🦩|hi-po-pó-ta-mo 🦛|ri-no-ce-ron-te 🦏|go-ri-la 🦍|cier-vo 🦌|ma-pa-che 🦝|nu-tria 🦦
+cas-tor 🦫|mo-fe-ta 🦨|os-tra 🦪|ca-la-mar 🦑|lan-gos-ta 🦞|gu-sa-no 🪱|es-cor-pión 🦂|gri-llo 🦗|mos-ca 🪰
+dra-gón 🐉|u-ni-cor-nio 🦄|to-ro 🐂|car-ne-ro 🐏|ja-ba-lí 🐗|le-o-par-do 🐆|ca-cho-rro 🐕|ca-ba-lli-to 🎠
+a-gua-ca-te 🥑|be-ren-je-na 🍆|bró-co-li 🥦|guin-di-lla 🌶️|a-jo 🧄|ce-bo-lla 🧅|me-lo-co-tón 🍑|man-go 🥭|ca-ca-hue-te 🥜
+pa-e-lla 🥘|es-pa-gue-tis 🍝|ta-co 🌮|ros-qui-lla 🍩|sal 🧂|a-cei-tu-na 🫒|cuen-co 🥣|bi-be-rón 🍼|té 🍵
+zu-mo 🧃|hie-lo 🧊|fi-le-te 🥩|po-llo 🍗|ja-món 🍖|man-te-qui-lla 🧈|ba-rra 🥖|pas-tel 🍰
+ti-ri-ta 🩹|ter-mó-me-tro 🌡️|ca-rri-to 🛒|co-me-ta 🪁|ra-que-ta 🏸|ba-lón 🏀|pa-tín 🛼|mo-ne-da 🪙|can-da-do 🔒|lin-ter-na 🔦
+pi-la 🔋|en-chu-fe 🔌|sie-rra 🪚|ha-cha 🪓|es-ca-le-ra 🪜|cu-bo 🪣|ce-pi-llo 🪥|es-pe-jo 🪞|ven-ta-na 🪟|si-lla 🪑
+ba-ñe-ra 🛁|du-cha 🚿|vá-ter 🚽|es-pon-ja 🧽|bo-lí-gra-fo 🖊️|cua-der-no 📓|car-pe-ta 📁|ca-len-da-rio 📅|clip 📎|chin-che-ta 📌
+pe-rió-di-co 📰|ma-pa 🗺️|brú-ju-la 🧭|tro-fe-o 🏆|me-da-lla 🏅|ban-de-ra 🚩|cas-co ⛑️|som-bre-ro 👒|cor-ba-ta 👔|chan-cla 🩴
+za-pa-ti-lla 👟|ta-cón 👠|pi-ña-ta 🪅|puz-le 🧩|a-je-drez ♟️|plan-ta 🌱|tron-co 🪵|pie-dra 🪨|ca-ra-co-la 🐚|pa-ja-ri-ta 🎀
+i-gle-sia ⛪|fá-bri-ca 🏭|ca-ba-ña 🛖|es-ta-dio 🏟️|fuen-te ⛲|de-sier-to 🏜️|no-che 🌃|ciu-dad 🏙️|tor-na-do 🌪️|nie-bla 🌫️
+pla-ne-ta 🪐|sa-té-li-te 🛰️|tran-ví-a 🚋|me-tro 🚇|pa-ra-ca-í-das 🪂|grú-a 🏗️|se-má-fo-ro 🚦|an-cla ⚓|mo-no-pa-tín 🛹|ga-so-li-ne-ra ⛽
+guar-dia 💂|bai-la-ri-na 💃|va-que-ro 🤠|si-re-na 🧜|vam-pi-ro 🧛|án-gel 👼|ce-re-bro 🧠|hue-so 🦴|len-gua 👅|u-ña 💅
+mu-ñe-ca 🪆|pa-pel 📄|so-bre 📩|ca-mi-no 🛤️
 `;
 // Palabras repetidas o con dibujo dudoso se filtran al cargar
 const BANCO_FRASES = `
@@ -143,22 +158,111 @@ Vamos al circo.|circo
 Duermo con mi peluche.|peluche
 Me pongo la bufanda.|bufanda
 Me abrocho la chaqueta.|chaqueta
+El pingüino tiene frío.|pingüino
+El pájaro canta.|pájaro
+El águila vuela alto.|águila
+El flamenco es rosa.|flamenco
+El hipopótamo se baña.|hipopótamo
+El gorila come fruta.|gorila
+El ciervo corre por el bosque.|ciervo
+El gusano sale de la tierra.|gusano
+El grillo canta de noche.|grillo
+La mosca vuela.|mosca
+El dragón echa fuego.|dragón
+El unicornio es blanco.|unicornio
+El toro es fuerte.|toro
+El jabalí corre.|jabalí
+El aguacate es verde.|aguacate
+La cebolla me hace llorar.|cebolla
+El melocotón es dulce.|melocotón
+Como un mango.|mango
+Papá hace paella.|paella
+Me gustan los espaguetis.|espaguetis
+Comemos tacos.|taco
+El bebé toma el biberón.|biberón
+Bebo zumo de naranja.|zumo
+El hielo está frío.|hielo
+Comemos pollo.|pollo
+La tirita me cura.|tirita
+Empujo el carrito.|carrito
+Mi cometa vuela.|cometa
+Boto el balón.|balón
+Guardo la moneda.|moneda
+Enciendo la linterna.|linterna
+Subo por la escalera.|escalera
+Lleno el cubo de arena.|cubo
+Me lavo los dientes con el cepillo.|cepillo
+Me miro en el espejo.|espejo
+Abro la ventana.|ventana
+Me siento en la silla.|silla
+Me baño en la bañera.|bañera
+Me ducho con agua.|ducha
+Escribo con el bolígrafo.|bolígrafo
+Pinto en el cuaderno.|cuaderno
+Miro el mapa.|mapa
+Gano una medalla.|medalla
+La bandera es roja.|bandera
+Llevo un sombrero.|sombrero
+Me pongo las zapatillas.|zapatilla
+Rompemos la piñata.|piñata
+Hago un puzle.|puzle
+Riego la planta.|planta
+Tiro una piedra al río.|piedra
+Vamos a la iglesia.|iglesia
+La fuente echa agua.|fuente
+El desierto tiene arena.|desierto
+Es de noche.|noche
+Hay mucha niebla.|niebla
+Viajo en metro.|metro
+El semáforo está en verde.|semáforo
+El barco echa el ancla.|ancla
+Monto en monopatín.|monopatín
+La bailarina baila.|bailarina
+El vaquero monta a caballo.|vaquero
+La sirena nada en el mar.|sirena
+Me duele la uña.|uña
+El perro come un hueso.|hueso
+Saco la lengua.|lengua
+Juego con mi muñeca.|muñeca
+Mando un sobre.|sobre
+El camino es largo.|camino
+Mi papel es blanco.|papel
+El castor hace una casa.|castor
+El calamar es largo.|calamar
+La langosta es roja.|langosta
+El planeta es redondo.|planeta
+El tranvía para aquí.|tranvía
+La grúa sube la caja.|grúa
+El cachorro juega.|cachorro
+Me echo sal.|sal
+Pongo mantequilla en el pan.|mantequilla
+Oigo el mar en la caracola.|caracola
 `;
 // Escenas para la comprensión oral: quién + qué hace + con qué
 const BANCO_SUJETOS = [
   {k:"niño",t:"El niño",e:"👦"},{k:"niña",t:"La niña",e:"👧"},{k:"abuela",t:"La abuela",e:"👵"},{k:"abuelo",t:"El abuelo",e:"👴"},
   {k:"bebé",t:"El bebé",e:"👶"},{k:"mamá",t:"Mamá",e:"👩"},{k:"papá",t:"Papá",e:"👨"},{k:"perro",t:"El perro",e:"🐶"},
-  {k:"gato",t:"El gato",e:"🐱"},{k:"mono",t:"El mono",e:"🐒"},{k:"oso",t:"El oso",e:"🐻"},{k:"conejo",t:"El conejo",e:"🐰"}
+  {k:"gato",t:"El gato",e:"🐱"},{k:"mono",t:"El mono",e:"🐒"},{k:"oso",t:"El oso",e:"🐻"},{k:"conejo",t:"El conejo",e:"🐰"},
+  {k:"payaso",t:"El payaso",e:"🤡"},{k:"rey",t:"El rey",e:"🤴"},{k:"reina",t:"La reina",e:"👸"},{k:"hada",t:"El hada",e:"🧚"},
+  {k:"robot",t:"El robot",e:"🤖"},{k:"pingüino",t:"El pingüino",e:"🐧"}
 ];
 const PERSONAS=["niño","niña","abuela","abuelo","mamá","papá"];
+const MAYORES=["abuela","abuelo","mamá","papá"];
 const BANCO_ACCIONES = [
-  {k:"comer",t:"come",e:"🍴",who:[...PERSONAS,"bebé","perro","gato","mono","oso","conejo"],objs:[{k:"manzana",t:"una manzana",e:"🍎"},{k:"plátano",t:"un plátano",e:"🍌"},{k:"pan",t:"pan",e:"🍞"},{k:"helado",t:"un helado",e:"🍦"},{k:"galleta",t:"una galleta",e:"🍪"},{k:"pera",t:"una pera",e:"🍐"},{k:"zanahoria",t:"una zanahoria",e:"🥕"},{k:"tarta",t:"tarta",e:"🎂"}]},
+  {k:"comer",t:"come",e:"🍴",who:[...PERSONAS,"bebé","perro","gato","mono","oso","conejo","rey","reina","payaso","hada"],objs:[{k:"fresa",t:"una fresa",e:"🍓"},{k:"pastel",t:"un pastel",e:"🍰"},{k:"uva",t:"una uva",e:"🍇"},{k:"manzana",t:"una manzana",e:"🍎"},{k:"plátano",t:"un plátano",e:"🍌"},{k:"pan",t:"pan",e:"🍞"},{k:"helado",t:"un helado",e:"🍦"},{k:"galleta",t:"una galleta",e:"🍪"},{k:"pera",t:"una pera",e:"🍐"},{k:"zanahoria",t:"una zanahoria",e:"🥕"},{k:"tarta",t:"tarta",e:"🎂"}]},
   {k:"beber",t:"bebe",e:"🥤",who:[...PERSONAS,"bebé","perro","gato","oso"],objs:[{k:"leche",t:"leche",e:"🥛"},{k:"agua",t:"agua",e:"💧"},{k:"zumo",t:"zumo",e:"🧃"}]},
   {k:"jugar",t:"juega con",e:"🧸",who:["niño","niña","bebé","perro","gato","mono"],objs:[{k:"pelota",t:"la pelota",e:"⚽"},{k:"globo",t:"un globo",e:"🎈"},{k:"coche",t:"un coche",e:"🚗"},{k:"robot",t:"un robot",e:"🤖"},{k:"dado",t:"un dado",e:"🎲"},{k:"peluche",t:"un peluche",e:"🧸"}]},
   {k:"pintar",t:"pinta",e:"🖌️",who:["niño","niña","abuela","abuelo","mamá","papá"],objs:[{k:"casa",t:"una casa",e:"🏠"},{k:"sol",t:"un sol",e:"☀️"},{k:"flor",t:"una flor",e:"🌸"},{k:"árbol",t:"un árbol",e:"🌳"},{k:"estrella",t:"una estrella",e:"⭐"}]},
   {k:"dormir",t:"duerme en",e:"💤",who:[...PERSONAS,"bebé","perro","gato","oso"],objs:[{k:"cama",t:"la cama",e:"🛏️"},{k:"sofá",t:"el sofá",e:"🛋️"}]},
   {k:"leer",t:"lee",e:"👀",who:PERSONAS,objs:[{k:"libro",t:"un libro",e:"📖"},{k:"carta",t:"una carta",e:"✉️"}]},
   {k:"lavar",t:"lava",e:"🧼",who:PERSONAS,objs:[{k:"plato",t:"un plato",e:"🍽️"},{k:"coche",t:"el coche",e:"🚗"},{k:"camiseta",t:"una camiseta",e:"👕"}]},
-  {k:"tocar",t:"toca",e:"🎶",who:["niño","niña","abuela","abuelo","mamá","papá","mono","oso"],objs:[{k:"tambor",t:"el tambor",e:"🥁"},{k:"guitarra",t:"la guitarra",e:"🎸"},{k:"piano",t:"el piano",e:"🎹"},{k:"trompeta",t:"la trompeta",e:"🎺"}]},
-  {k:"subir",t:"sube al",e:"⬆️",who:PERSONAS,objs:[{k:"autobús",t:"autobús",e:"🚌"},{k:"tren",t:"tren",e:"🚆"},{k:"barco",t:"barco",e:"⛵"},{k:"avión",t:"avión",e:"✈️"}]}
+  {k:"tocar",t:"toca",e:"🎶",who:["niño","niña","abuela","abuelo","mamá","papá","mono","oso","payaso","robot","rey","reina"],objs:[{k:"violín",t:"el violín",e:"🎻"},{k:"saxofón",t:"el saxofón",e:"🎷"},{k:"tambor",t:"el tambor",e:"🥁"},{k:"guitarra",t:"la guitarra",e:"🎸"},{k:"piano",t:"el piano",e:"🎹"},{k:"trompeta",t:"la trompeta",e:"🎺"}]},
+  {k:"subir",t:"sube al",e:"⬆️",who:PERSONAS,objs:[{k:"autobús",t:"autobús",e:"🚌"},{k:"tren",t:"tren",e:"🚆"},{k:"barco",t:"barco",e:"⛵"},{k:"avión",t:"avión",e:"✈️"}]},
+  {k:"abrir",t:"abre",e:"👐",who:[...PERSONAS,"rey","reina","payaso","robot"],objs:[{k:"puerta",t:"la puerta",e:"🚪"},{k:"caja",t:"la caja",e:"📦"},{k:"regalo",t:"un regalo",e:"🎁"},{k:"ventana",t:"la ventana",e:"🪟"},{k:"maleta",t:"la maleta",e:"🧳"}]},
+  {k:"llevar",t:"lleva",e:"🤲",who:[...PERSONAS,"payaso","robot","hada"],objs:[{k:"mochila",t:"la mochila",e:"🎒"},{k:"paraguas",t:"un paraguas",e:"☂️"},{k:"cesta",t:"una cesta",e:"🧺"},{k:"globo",t:"un globo",e:"🎈"},{k:"bolso",t:"un bolso",e:"👜"},{k:"flor",t:"una flor",e:"🌸"}]},
+  {k:"ponerse",t:"se pone",e:"🧍",who:[...PERSONAS,"rey","reina","payaso","pingüino"],objs:[{k:"gorra",t:"la gorra",e:"🧢"},{k:"gafas",t:"las gafas",e:"👓"},{k:"bufanda",t:"la bufanda",e:"🧣"},{k:"corona",t:"la corona",e:"👑"},{k:"sombrero",t:"un sombrero",e:"👒"},{k:"chaqueta",t:"la chaqueta",e:"🧥"}]},
+  {k:"conducir",t:"conduce",e:"🚦",who:[...MAYORES,"robot","payaso"],objs:[{k:"coche",t:"el coche",e:"🚗"},{k:"camión",t:"el camión",e:"🚚"},{k:"tractor",t:"el tractor",e:"🚜"},{k:"autobús",t:"el autobús",e:"🚌"},{k:"moto",t:"la moto",e:"🏍️"},{k:"taxi",t:"el taxi",e:"🚕"}]},
+  {k:"cortar",t:"corta",e:"🔪",who:MAYORES,objs:[{k:"pan",t:"el pan",e:"🍞"},{k:"tarta",t:"la tarta",e:"🎂"},{k:"tomate",t:"un tomate",e:"🍅"},{k:"pizza",t:"la pizza",e:"🍕"},{k:"queso",t:"el queso",e:"🧀"},{k:"sandía",t:"la sandía",e:"🍉"}]},
+  {k:"mirar",t:"mira",e:"👁️",who:[...PERSONAS,"bebé","gato","perro","mono","rey","reina","hada","pingüino"],objs:[{k:"luna",t:"la luna",e:"🌙"},{k:"estrella",t:"una estrella",e:"⭐"},{k:"arcoíris",t:"el arcoíris",e:"🌈"},{k:"mariposa",t:"una mariposa",e:"🦋"},{k:"televisión",t:"la televisión",e:"📺"},{k:"pez",t:"un pez",e:"🐟"}]},
+  {k:"coger",t:"coge",e:"✊",who:[...PERSONAS,"bebé","mono","robot","hada"],objs:[{k:"llave",t:"la llave",e:"🔑"},{k:"pelota",t:"la pelota",e:"⚽"},{k:"lápiz",t:"un lápiz",e:"✏️"},{k:"manzana",t:"una manzana",e:"🍎"},{k:"teléfono",t:"el teléfono",e:"📱"},{k:"seta",t:"una seta",e:"🍄"}]}
 ];

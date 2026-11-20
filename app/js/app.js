@@ -95,7 +95,8 @@ function tts(text){
     const u=new SpeechSynthesisUtterance(text); u.lang="es-ES"; if(VOICE) u.voice=VOICE;
     const st=inStudent()?student():null;
     u.rate = st && st.helps && st.helps.lenta ? .65 : .9;
-    speechSynthesis.speak(u);
+    // En algunos Android se pierde lo que se pide justo tras cancelar: pequeña espera
+    setTimeout(()=>{ try{ speechSynthesis.resume(); speechSynthesis.speak(u); }catch(e){} },60);
   }catch(e){}
 }
 function say(text,key){
@@ -780,7 +781,7 @@ function actScissors(it,ctx){
   const sayIt=()=>say(it.phrase.t,"frase:"+it.phrase.t); app.querySelector("[data-say]").onclick=sayIt;
   const el=app.querySelector("[data-sc]");
   function paint(bad){
-    el.innerHTML=letters.map((c,i)=>`${i>0?`<button class="cut ${cuts.has(i)?"on":""} ${bad&&bad.has(i)?"bad":""}" data-c="${i}" aria-label="Cortar aquí"><i></i></button>`:""}<span class="lt">${st.cfg.font==="cursiva"&&/[a-zñáéíóú]/.test(c)?ESCOLAR.svgWord(c):esc(c)}</span>`).join("");
+    el.innerHTML=letters.map((c,i)=>`${i>0?`<button class="cut ${cuts.has(i)?"on":""} ${bad&&bad.has(i)?"bad":""}" data-c="${i}" aria-label="Cortar aquí"><i></i></button>`:""}<span class="lt">${st.cfg.font==="cursiva"&&/[a-zñáéíóúü]/.test(c)?ESCOLAR.svgWord(c):esc(c)}</span>`).join("");
     el.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{ if(locked) return; const i=+b.dataset.c; cuts.has(i)?cuts.delete(i):cuts.add(i); paint(); });
   }
   app.querySelector("[data-ok]").onclick=()=>{
