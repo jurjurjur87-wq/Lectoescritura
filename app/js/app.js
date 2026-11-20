@@ -1826,7 +1826,10 @@ function tabAudios(body){
 /* ---- Copias de seguridad ---- */
 async function exportData(groupIds,withAudio){
   const gs=DB.groups.filter(g=>groupIds.includes(g.id)); const gids=new Set(gs.map(g=>g.id));
-  const students=DB.students.filter(s=>[s.group,...(s.extra||[])].some(id=>gids.has(id))); const sids=new Set(students.map(s=>s.id));
+  // cada alumno va solo con las clases que van en la copia (si su clase principal no va, pasa a serlo una de las que sí)
+  const students=DB.students.filter(s=>[s.group,...(s.extra||[])].some(id=>gids.has(id))).map(s=>{
+    const cls=[s.group,...(s.extra||[])].filter(id=>gids.has(id)); return Object.assign({},s,{group:cls[0],extra:cls.slice(1)}); });
+  const sids=new Set(students.map(s=>s.id));
   const tids=new Set(gs.flatMap(g=>g.teachers||[]));
   const data={app:"lectoescritura",version:3,exported:new Date().toISOString(),teachers:DB.teachers.filter(t=>tids.has(t.id)),groups:gs,students,records:DB.records.filter(r=>sids.has(r.st)&&gids.has(r.g||(byId(DB.students,r.st)||{}).group)),custom:DB.custom};
   if(withAudio){
@@ -1871,7 +1874,12 @@ function tabBackup(body){
         const d=JSON.parse(rd.result); if(d.app!=="lectoescritura") throw 0;
         const up=(arr,items)=>items.forEach(it=>{const i=arr.findIndex(x=>x.id===it.id); if(i>=0) arr[i]=Object.assign(arr[i],it); else arr.push(it);});
         (d.teachers||[]).forEach(t=>{ if(!byId(DB.teachers,t.id)) DB.teachers.push(Object.assign({},t,{admin:DB.teachers.length?false:t.admin})); });
-        up(DB.groups,d.groups||[]); up(DB.students,d.students||[]);
+        up(DB.groups,d.groups||[]);
+        // alumnos: si ya existe, se suman sus clases (una copia parcial no le quita las que tiene en este equipo)
+        (d.students||[]).forEach(it=>{ const cur=byId(DB.students,it.id);
+          if(!cur) return DB.students.push(it);
+          const cls=[...new Set([cur.group,...(cur.extra||[]),it.group,...(it.extra||[])])].filter(id=>byId(DB.groups,id));
+          Object.assign(cur,it,{group:cls.includes(cur.group)?cur.group:cls[0],extra:cls.filter(x=>x!==(cls.includes(cur.group)?cur.group:cls[0]))}); });
         const have=new Set(DB.records.map(r=>r.id)); (d.records||[]).forEach(r=>{ if(!have.has(r.id)) DB.records.push(r); });
         if(d.custom){ ["words","phrases"].forEach(k=>(d.custom[k]||[]).forEach(it=>{ const i=DB.custom[k].findIndex(x=>x.id===it.id); if(i>=0) DB.custom[k][i]=it; else DB.custom[k].push(it); })); applyCustom(); }
         if(d.audios) for(const k in d.audios){ const b=await (await fetch(d.audios[k])).blob(); await AUDIO.save(k,b); }
