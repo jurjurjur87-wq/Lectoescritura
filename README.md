@@ -57,7 +57,7 @@ En todos los juegos, tocar una opción solo la marca (si es un dibujo, además l
 ### Para el docente
 - Cuentas con PIN. Puede haber **varios administradores** (siempre al menos uno); la administración se puede transferir.
 - Clases compartidas entre docentes (tutora + PT + AL). Alta rápida pegando una lista de nombres.
-- **Alumnado en varias clases**: un alumno puede estar en su clase y también en PT (o trasladarse de clase). Cada clase puede añadir alumnos de otras sin quitárselos. Es el mismo alumno (mismos niveles y ayudas), pero **cada docente, también la administración, solo ve el progreso hecho en las clases en las que da clase**.
+- **Alumnado en varias clases**: un alumno puede estar en su clase y también en PT (o trasladarse de clase). Cada clase puede añadir alumnos de otras sin quitárselos. Es el mismo alumno, pero **cada clase puede ponerle sus propios niveles y tipo de letra** (las ayudas y las letras trabajadas son comunes), y **cada docente, también la administración, solo ve el progreso hecho en las clases en las que da clase**.
 - **Progreso**: resumen de la clase, evolución semanal por áreas, mapa por letras, resultados **por actividad** y lo que más le cuesta a cada alumno. Cada aviso cuenta como intento, y un ejercicio que no se termina bien cuenta como fallo.
 - **Informe imprimible** por alumno (o en PDF), con observaciones.
 - **Ficha de repaso** para imprimir: letras, sílabas, palabras o lo que más le cuesta, con la letra del alumno (también escolar), modelo, copias punteadas y pauta libre.

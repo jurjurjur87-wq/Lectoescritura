@@ -18,6 +18,13 @@ const lvlOf = (st,area)=> (st.cfg&&st.cfg[area]) || 1;
 // Es el mismo alumno: comparte niveles, ayudas y progreso en todas sus clases.
 const inGroup=(s,gid)=>s.group===gid||(s.extra||[]).includes(gid);
 const classesOf=s=>[s.group,...(s.extra||[])].map(id=>byId(DB.groups,id)).filter(Boolean);
+// Niveles y tipo de letra por clase: en su clase principal están en cfg; en las demás, en cfgBy[clase]
+const cfgFor=(s,gid)=>(gid&&gid!==s.group&&s.cfgBy&&s.cfgBy[gid])||s.cfg;
+function setCfg(s,gid,cfg){ if(!gid||gid===s.group) s.cfg=cfg; else { s.cfgBy=s.cfgBy||{}; s.cfgBy[gid]=cfg; } }
+const viewIn=(s,gid)=>Object.assign({},s,{cfg:cfgFor(s,gid)});        // el alumno tal como está en una clase
+// cambia la clase principal sin perder los niveles de cada clase
+function rehome(s,newHome){ if(newHome===s.group) return; const by=Object.assign({},s.cfgBy||{});
+  by[s.group]=s.cfg; s.cfg=by[newHome]||s.cfg; delete by[newHome]; s.group=newHome; s.extra=(s.extra||[]).filter(x=>x!==newHome); s.cfgBy=by; }
 /* Palabras y frases propias del docente: se añaden a las listas comunes */
 function applyCustom(){
   for(let i=WORDS.length-1;i>=0;i--) if(WORDS[i].c) WORDS.splice(i,1);
@@ -83,7 +90,8 @@ function student(){
     if(S.demoLevels) Object.assign(d.cfg,S.demoLevels);
     return d;
   }
-  return byId(DB.students,S.studentId);
+  const s=byId(DB.students,S.studentId);
+  return s&&S.groupId&&S.groupId!==s.group&&s.cfgBy&&s.cfgBy[S.groupId] ? viewIn(s,S.groupId) : s;
 }
 const inStudent = ()=>!!(S.studentId||S.demo);
 function enabledLetters(st){ return (st.letters && st.letters.length) ? st.letters : LETTERS; }
@@ -1335,10 +1343,10 @@ function groupForm(g){
       if(isNew){ S.tGroup=g.id; S.tTab="alumnos"; teacherPanel(); toast("Clase creada. Ahora añade al alumnado"); bulkAdd(g); } else teacherPanel(); };
     const ap=m.querySelector("[data-apply]"); if(ap) ap.onclick=()=>{ if(!collect())return;
       confirmBox("¿Aplicar estos niveles y tipo de letra a todo el alumnado de la clase?","Aplicar",()=>{
-        DB.students.filter(s=>inGroup(s,g.id)).forEach(s=>s.cfg=Object.assign({},g.defaults)); save(); close(); toast("Aplicado"); teacherPanel(); }); };
+        DB.students.filter(s=>inGroup(s,g.id)).forEach(s=>setCfg(s,g.id,Object.assign({},g.defaults))); save(); close(); toast("Aplicado"); teacherPanel(); }); };
     const del=m.querySelector("[data-del]"); if(del) del.onclick=()=>confirmBox(`¿Eliminar la clase «${g.name}»? El alumnado que solo está en esta clase se borra con su progreso; quien esté también en otra clase se queda en ella.`,"Eliminar",()=>{
-      DB.students.forEach(s=>{ if(s.extra&&s.extra.includes(g.id)) s.extra=s.extra.filter(x=>x!==g.id);
-        if(s.group===g.id&&s.extra&&s.extra.length){ s.group=s.extra.shift(); } });   // si está en otra clase, se queda allí
+      DB.students.forEach(s=>{ if(s.extra&&s.extra.includes(g.id)){ s.extra=s.extra.filter(x=>x!==g.id); if(s.cfgBy) delete s.cfgBy[g.id]; }
+        if(s.group===g.id&&s.extra&&s.extra.length){ const nh=s.extra[0]; rehome(s,nh); if(s.cfgBy) delete s.cfgBy[g.id]; } });   // si está en otra clase, se queda allí
       const ids=new Set(DB.students.filter(s=>s.group===g.id).map(s=>s.id));
       DB.records=DB.records.filter(r=>!ids.has(r.st)); DB.students=DB.students.filter(s=>s.group!==g.id);
       DB.groups=DB.groups.filter(x=>x.id!==g.id); if(DB.settings.fixedGroup===g.id) DB.settings.fixedGroup=null; save(); close(); teacherPanel(); });
@@ -1365,12 +1373,12 @@ function tabStudents(body){
   const sts=DB.students.filter(s=>inGroup(s,g.id)).sort((a,b)=>a.name.localeCompare(b.name,"es"));
   body.insertAdjacentHTML("beforeend",`<div class="panel">${sts.length?`<div class="tw"><table class="st-table"><thead><tr><th></th><th>Nombre</th><th>Escuchar</th><th>Leer</th><th>Escribir</th><th>Letra</th><th>Ayudas</th><th>Letras trabajadas</th><th></th></tr></thead><tbody>
     ${sts.map(s=>{ const others=classesOf(s).filter(x=>x.id!==g.id); return `<tr class="click" data-s="${s.id}"><td style="font-size:1.6em">${s.avatar}</td><td><b>${esc(s.name)}</b>${others.length?`<div class="small-t muted">También en: ${others.map(x=>esc(x.name)).join(", ")}</div>`:""}</td>
-    <td data-lab="Escuchar">${LEVELS.escucha[lvlOf(s,"escucha")]}</td><td data-lab="Leer">${LEVELS.lectura[s.cfg.lectura]}</td><td data-lab="Escribir">${LEVELS.escritura[s.cfg.escritura]}</td><td data-lab="Letra">${FONTS[s.cfg.font].label}</td>
+    ${(c=>`<td data-lab="Escuchar">${LEVELS.escucha[c.escucha||1]}</td><td data-lab="Leer">${LEVELS.lectura[c.lectura]}</td><td data-lab="Escribir">${LEVELS.escritura[c.escritura]}</td><td data-lab="Letra">${FONTS[c.font].label}</td>`)(cfgFor(s,g.id))}
     <td data-lab="Ayudas">${helpChips(s.helps)}</td><td data-lab="Letras">${s.letters&&s.letters.length<27?`<span class="chip">${s.letters.length} de 27</span>`:"Todo el abecedario"}</td><td class="row-acts"><button class="btn small">${ICON.pencil} Editar</button><button class="btn small" data-move="${s.id}">⇄ Clases</button></td></tr>`; }).join("")}
   </tbody></table></div>`:`<div class="empty">No hay alumnado en esta clase.</div>`}</div>`);
   body.querySelector("[data-add]").onclick=()=>bulkAdd(g);
   body.querySelector("[data-all]").onclick=()=>sts.length?classChange(g,sts):toast("Primero añade alumnado");
-  body.querySelectorAll("[data-s]").forEach(r=>r.onclick=()=>studentForm(byId(DB.students,r.dataset.s)));
+  body.querySelectorAll("[data-s]").forEach(r=>r.onclick=()=>studentForm(byId(DB.students,r.dataset.s),g));
   body.querySelectorAll("[data-move]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); moveStudent(byId(DB.students,b.dataset.move),g); });
   body.querySelector("[data-from]").onclick=()=>addFromOther(g);
 }
@@ -1390,13 +1398,15 @@ function moveStudent(s,g){
     <div class="row end"><button class="btn" data-x>Cerrar</button></div>`,(m,close)=>{
     m.querySelector("[data-x]").onclick=close;
     const target=()=>m.querySelector("[data-tg]").value;
-    const dup=m.querySelector("[data-dup]"); if(dup) dup.onclick=()=>{ const t=target(); s.extra=[...new Set([...(s.extra||[]),t])]; save(); close(); toast(`${s.name} está ahora también en «${byId(DB.groups,t).name}»`); teacherPanel(); };
+    const dup=m.querySelector("[data-dup]"); if(dup) dup.onclick=()=>{ const t=target(); s.extra=[...new Set([...(s.extra||[]),t])]; setCfg(s,t,Object.assign({},cfgFor(s,g.id))); save(); close(); toast(`${s.name} está ahora también en «${byId(DB.groups,t).name}»`); teacherPanel(); };
     const mv=m.querySelector("[data-mv]"); if(mv) mv.onclick=()=>{ const t=target();
       DB.records.forEach(r=>{ if(r.st===s.id&&(r.g||s.group)===g.id) r.g=t; }); if(REC.ok) IDB.replaceAll("records",DB.records.map(r=>[r.id,r])).catch(()=>{});
-      if(s.group===g.id) s.group=t; else s.extra=(s.extra||[]).map(x=>x===g.id?t:x);
+      if(s.group===g.id){ s.group=t; if(s.cfgBy) delete s.cfgBy[t]; }
+      else { const c=cfgFor(s,g.id); s.extra=(s.extra||[]).map(x=>x===g.id?t:x); if(s.cfgBy) delete s.cfgBy[g.id]; setCfg(s,t,c); }
       s.extra=[...new Set((s.extra||[]).filter(x=>x!==s.group))]; save(); close(); toast(`${s.name} se ha trasladado a «${byId(DB.groups,t).name}»`); teacherPanel(); };
     const rm=m.querySelector("[data-rm]"); if(rm) rm.onclick=()=>{
-      if(s.group===g.id){ s.group=s.extra[0]; s.extra=s.extra.slice(1); } else s.extra=s.extra.filter(x=>x!==g.id);
+      if(s.group===g.id){ const nh=s.extra[0]; rehome(s,nh); if(s.cfgBy) delete s.cfgBy[g.id]; }
+      else { s.extra=s.extra.filter(x=>x!==g.id); if(s.cfgBy) delete s.cfgBy[g.id]; }
       save(); close(); toast(`${s.name} ya no está en «${g.name}»`); teacherPanel(); };
   });
 }
@@ -1413,7 +1423,7 @@ function addFromOther(g){
     m.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{ const id=b.dataset.p; picked.has(id)?picked.delete(id):picked.add(id);
       m.querySelectorAll(`[data-p="${id}"]`).forEach(x=>x.classList.toggle("on",picked.has(id))); m.querySelector("[data-ok]").textContent=picked.size?`Añadir (${picked.size})`:"Añadir"; });
     m.querySelector("[data-ok]").onclick=()=>{ if(!picked.size) return toast("Toca los alumnos que quieres añadir");
-      picked.forEach(id=>{ const s=byId(DB.students,id); s.extra=[...new Set([...(s.extra||[]),g.id])]; });
+      picked.forEach(id=>{ const s=byId(DB.students,id); s.extra=[...new Set([...(s.extra||[]),g.id])]; setCfg(s,g.id,Object.assign({},s.cfg)); });
       save(); close(); toast(picked.size===1?"1 alumno añadido a la clase":`${picked.size} alumnos añadidos a la clase`); teacherPanel(); };
   });
 }
@@ -1433,7 +1443,7 @@ function classChange(g,sts){
       const v={}; m.querySelectorAll("[data-k]").forEach(x=>{ if(x.value!=="") v[x.dataset.k]=x.value; });
       if(!Object.keys(v).length) return toast("No has cambiado nada");
       sts.forEach(s=>{ s.helps=Object.assign(defaultHelps(),s.helps);
-        ["escucha","lectura","escritura"].forEach(k=>{ if(v[k]) s.cfg[k]=+v[k]; }); if(v.font) s.cfg.font=v.font;
+        const c=Object.assign({},cfgFor(s,g.id)); ["escucha","lectura","escritura"].forEach(k=>{ if(v[k]) c[k]=+v[k]; }); if(v.font) c.font=v.font; setCfg(s,g.id,c);
         if(v.ronda) s.helps.ronda=+v.ronda; ["calma","grande","lenta","picto","pista"].forEach(k=>{ if(v[k]!=null) s.helps[k]=v[k]==="1"; }); });
       save(); close(); toast(`Cambiado en ${sts.length} ${sts.length===1?"alumno":"alumnos"}`); teacherPanel();
     };
@@ -1455,13 +1465,15 @@ function bulkAdd(g){
     };
   });
 }
-function studentForm(s){
+function studentForm(s,g){
+  g=g||byId(DB.groups,s.group); const multi=classesOf(s).length>1;
   let av=s.avatar; let letters=new Set(s.letters&&s.letters.length?s.letters:LETTERS);
   const hp=Object.assign(defaultHelps(),s.helps);
   modal(`<h3>${s.avatar} ${esc(s.name)}</h3><div class="form">
     <label>Nombre<input type="text" data-n value="${esc(s.name)}"></label>
     <div><b class="small-t">Animal</b><div class="avpick" style="margin-top:.3em">${AVATARS.map(a=>`<button data-a="${a}" class="${a===av?"on":""}">${a}</button>`).join("")}</div></div>
-    <fieldset><legend>Nivel por áreas y tipo de letra</legend>${cfgFields(s.cfg)}</fieldset>
+    <fieldset><legend>${multi?`Niveles y letra en «${esc(g.name)}»`:"Nivel por áreas y tipo de letra"}</legend>${cfgFields(cfgFor(s,g.id))}
+      ${multi?`<p class="muted small-t" style="margin:.3em 0 0">Está también en ${classesOf(s).filter(x=>x.id!==g.id).map(x=>`«${esc(x.name)}»`).join(", ")}: allí puede tener otros niveles. Las ayudas y las letras trabajadas son las mismas en todas sus clases.</p>`:""}</fieldset>
     <fieldset><legend>Ayudas</legend>
       <label class="check"><input type="checkbox" data-hc ${hp.calma?"checked":""}> <span><b>Modo sensible</b>: aspecto sobrio, sin animaciones ni adornos</span></label>
       <label class="check"><input type="checkbox" data-hg ${hp.grande?"checked":""}> Botones y textos más grandes</label>
@@ -1487,13 +1499,16 @@ function studentForm(s){
     m.querySelector("[data-ok]").onclick=()=>{
       const n=m.querySelector("[data-n]").value.trim(); if(!n) return toast("Escribe el nombre");
       if(!letters.size) return toast("Elige al menos una letra");
-      s.name=n; s.avatar=av; s.cfg=readCfg(m);
+      s.name=n; s.avatar=av; setCfg(s,g.id,readCfg(m));
       s.helps={grande:m.querySelector("[data-hg]").checked,lenta:m.querySelector("[data-hl]").checked,calma:m.querySelector("[data-hc]").checked,picto:m.querySelector("[data-hp]").checked,tol:m.querySelector("[data-ht]").value,pista:m.querySelector("[data-hpi]").checked,ronda:+m.querySelector("[data-hr]").value};
       s.letters=letters.size===27?null:LETTERS.filter(l=>letters.has(l));
       save(); close(); teacherPanel();
     };
-    m.querySelector("[data-del]").onclick=()=>confirmBox(classesOf(s).length>1?`${s.name} está en ${classesOf(s).length} clases. ¿Eliminarlo de todas con todo su progreso? (Para quitarlo solo de una clase, usa «⇄ Clases»)`:`¿Eliminar a ${s.name} y todo su progreso?`,"Eliminar",()=>{
-      DB.students=DB.students.filter(x=>x.id!==s.id); DB.records=DB.records.filter(r=>r.st!==s.id); save(); close(); teacherPanel(); });
+    m.querySelector("[data-del]").onclick=()=>{
+      // si está también en clases en las que este docente no da clase, solo puede quitarlo de esta
+      if(classesOf(s).length>1&&!me().admin&&classesOf(s).some(x=>!teachesIn(x.id))){ close(); return moveStudent(s,g); }
+      confirmBox(classesOf(s).length>1?`${s.name} está en ${classesOf(s).length} clases. ¿Eliminarlo de todas con todo su progreso? (Para quitarlo solo de una clase, usa «⇄ Clases»)`:`¿Eliminar a ${s.name} y todo su progreso?`,"Eliminar",()=>{
+      DB.students=DB.students.filter(x=>x.id!==s.id); DB.records=DB.records.filter(r=>r.st!==s.id); save(); close(); teacherPanel(); }); };
   });
 }
 
@@ -1581,7 +1596,7 @@ function studentProgress(body,s){
   const A=studentAnalysis(s); const {recs,sm}=A;
   body.insertAdjacentHTML("beforeend",`<div class="panel">
     <div class="row"><button class="btn small" data-backp>${ICON.back} Clase</button><span style="font-size:2em">${s.avatar}</span><h3 style="margin:0">${esc(s.name)}</h3>
-    <span class="chip">Escuchar: ${LEVELS.escucha[lvlOf(s,"escucha")]}</span><span class="chip">Lectura: ${LEVELS.lectura[s.cfg.lectura]}</span><span class="chip">Escritura: ${LEVELS.escritura[s.cfg.escritura]}</span><span class="chip">${FONTS[s.cfg.font].label}</span>
+    ${(c=>`<span class="chip">Escuchar: ${LEVELS.escucha[c.escucha||1]}</span><span class="chip">Lectura: ${LEVELS.lectura[c.lectura]}</span><span class="chip">Escritura: ${LEVELS.escritura[c.escritura]}</span><span class="chip">${FONTS[c.font].label}</span>`)(cfgFor(s,S.tGroup))}
     <span style="flex:1"></span><button class="btn small" data-sheet>${ICON.pencil} Ficha de repaso</button><button class="btn primary small" data-report>${ICON.print} Informe</button></div>
     ${DB.records.some(r=>r.st===s.id)&&recs.length<DB.records.filter(r=>r.st===s.id).length?`<p class="muted small-t" style="margin:.4em 0 0">🔒 Solo ves lo que ha hecho en tus clases. Lo que hace en otras clases lo ve quien da clase allí.</p>`:""}
     <div class="stats">
@@ -1615,10 +1630,10 @@ function openReport(s){
     <header><div><h1>Informe de lectoescritura</h1><div class="muted">${esc(g?g.name:"")} · ${new Date().toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"})}</div></div><div class="r-name">${s.avatar} ${esc(s.name)}</div></header>
     <section class="r-grid">
       <div><h2>Configuración</h2><table class="r-t">
-        <tr><td>Nivel de escuchar</td><td>${lvlOf(s,"escucha")}. ${LEVELS.escucha[lvlOf(s,"escucha")]}</td></tr>
-        <tr><td>Nivel de lectura</td><td>${s.cfg.lectura}. ${LEVELS.lectura[s.cfg.lectura]}</td></tr>
-        <tr><td>Nivel de escritura</td><td>${s.cfg.escritura}. ${LEVELS.escritura[s.cfg.escritura]}</td></tr>
-        <tr><td>Tipo de letra</td><td>${FONTS[s.cfg.font].label}</td></tr>
+        ${(c=>`<tr><td>Nivel de escuchar</td><td>${c.escucha||1}. ${LEVELS.escucha[c.escucha||1]}</td></tr>
+        <tr><td>Nivel de lectura</td><td>${c.lectura}. ${LEVELS.lectura[c.lectura]}</td></tr>
+        <tr><td>Nivel de escritura</td><td>${c.escritura}. ${LEVELS.escritura[c.escritura]}</td></tr>
+        <tr><td>Tipo de letra</td><td>${FONTS[c.font].label}</td></tr>`)(cfgFor(s,S.tGroup))}
         <tr><td>Ayudas</td><td>${[hp.calma&&"Modo sensible",hp.grande&&"Botones grandes",hp.lenta&&"Voz lenta",!hp.picto&&"Sin dibujos","Trazado: "+TOLERANCE[hp.tol].label].filter(Boolean).join(", ")}</td></tr>
         <tr><td>Letras trabajadas</td><td>${s.letters&&s.letters.length<27?s.letters.join(" "):"Todas"}</td></tr>
       </table></div>
@@ -1655,7 +1670,7 @@ function sheetDialog(s){
   modal(`<h3>Ficha de repaso de ${esc(s.name)}</h3><div class="form">
     <label>Qué repasar<select data-sk><option value="palabras">Palabras</option><option value="silabas">Sílabas</option><option value="letras">Letras</option><option value="flojas">Lo que más le cuesta</option></select></label>
     <label>Cuántas<select data-sn>${[4,6,8].map(n=>`<option ${n===6?"selected":""}>${n}</option>`).join("")}</select></label>
-    <label>Tipo de letra<select data-sf>${Object.entries(FONTS).map(([k,f])=>`<option value="${k}" ${s.cfg.font===k?"selected":""}>${f.label}</option>`).join("")}</select></label>
+    <label>Tipo de letra<select data-sf>${Object.entries(FONTS).map(([k,f])=>`<option value="${k}" ${cfgFor(s,S.tGroup).font===k?"selected":""}>${f.label}</option>`).join("")}</select></label>
     <label class="check"><input type="checkbox" data-sp checked> Con dibujo</label>
     <p class="muted small-t" style="margin:0">Se eligen al azar entre las letras que trabaja. Puedes generarla otra vez para que salga distinta.</p>
   </div><div class="row end"><button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>${ICON.print} Crear ficha</button></div>`,(m,close)=>{
@@ -1828,7 +1843,9 @@ async function exportData(groupIds,withAudio){
   const gs=DB.groups.filter(g=>groupIds.includes(g.id)); const gids=new Set(gs.map(g=>g.id));
   // cada alumno va solo con las clases que van en la copia (si su clase principal no va, pasa a serlo una de las que sí)
   const students=DB.students.filter(s=>[s.group,...(s.extra||[])].some(id=>gids.has(id))).map(s=>{
-    const cls=[s.group,...(s.extra||[])].filter(id=>gids.has(id)); return Object.assign({},s,{group:cls[0],extra:cls.slice(1)}); });
+    const cls=[s.group,...(s.extra||[])].filter(id=>gids.has(id)); const by={};
+    cls.slice(1).forEach(id=>{ by[id]=cfgFor(s,id); });
+    return Object.assign({},s,{group:cls[0],extra:cls.slice(1),cfg:cfgFor(s,cls[0]),cfgBy:by}); });
   const sids=new Set(students.map(s=>s.id));
   const tids=new Set(gs.flatMap(g=>g.teachers||[]));
   const data={app:"lectoescritura",version:3,exported:new Date().toISOString(),teachers:DB.teachers.filter(t=>tids.has(t.id)),groups:gs,students,records:DB.records.filter(r=>sids.has(r.st)&&gids.has(r.g||(byId(DB.students,r.st)||{}).group)),custom:DB.custom};
@@ -1879,7 +1896,9 @@ function tabBackup(body){
         (d.students||[]).forEach(it=>{ const cur=byId(DB.students,it.id);
           if(!cur) return DB.students.push(it);
           const cls=[...new Set([cur.group,...(cur.extra||[]),it.group,...(it.extra||[])])].filter(id=>byId(DB.groups,id));
-          Object.assign(cur,it,{group:cls.includes(cur.group)?cur.group:cls[0],extra:cls.filter(x=>x!==(cls.includes(cur.group)?cur.group:cls[0]))}); });
+          const levels={}; [cur.group,...(cur.extra||[])].forEach(id=>levels[id]=cfgFor(cur,id)); [it.group,...(it.extra||[])].forEach(id=>levels[id]=cfgFor(it,id));
+          const home=cls.includes(cur.group)?cur.group:cls[0];
+          Object.assign(cur,it,{group:home,extra:cls.filter(x=>x!==home),cfg:levels[home]||cur.cfg,cfgBy:Object.fromEntries(cls.filter(x=>x!==home).map(id=>[id,levels[id]]))}); });
         const have=new Set(DB.records.map(r=>r.id)); (d.records||[]).forEach(r=>{ if(!have.has(r.id)) DB.records.push(r); });
         if(d.custom){ ["words","phrases"].forEach(k=>(d.custom[k]||[]).forEach(it=>{ const i=DB.custom[k].findIndex(x=>x.id===it.id); if(i>=0) DB.custom[k][i]=it; else DB.custom[k].push(it); })); applyCustom(); }
         if(d.audios) for(const k in d.audios){ const b=await (await fetch(d.audios[k])).blob(); await AUDIO.save(k,b); }
@@ -1974,7 +1993,7 @@ function tabSettings(body){
   body.querySelectorAll("input[name=font]").forEach(r=>r.onchange=()=>{st.font=r.value; save(); rerender(); toast("Guardado");});
   body.querySelector("[data-fontall]").onclick=()=>{ const f=st.font||"cursiva";
     confirmBox(`¿Poner «${FONTS[f].label}» en todas las clases y en todo el alumnado de este equipo?`,"Aplicar",()=>{
-      DB.groups.forEach(g=>g.defaults.font=f); DB.students.forEach(x=>x.cfg.font=f); save(); rerender(); toast("Aplicado a todos"); }); };
+      DB.groups.forEach(g=>g.defaults.font=f); DB.students.forEach(x=>{ x.cfg.font=f; Object.values(x.cfgBy||{}).forEach(c=>c.font=f); }); save(); rerender(); toast("Aplicado a todos"); }); };
   body.querySelectorAll("input[name=cel]").forEach(r=>r.onchange=()=>{st.celebration=r.value; save(); rerender(); toast("Guardado");});
   body.querySelector("input[name=praise]").onchange=e=>{st.praise=e.target.checked; save(); rerender(); toast("Guardado");};
   body.querySelectorAll("input[name=pic]").forEach(r=>r.onchange=()=>{st.pictos=r.value; save(); rerender(); toast("Guardado");});
