@@ -66,7 +66,8 @@ function flushPending(){
   const tries=p.getTries?p.getTries():p.tries;
   if(!(tries>0||p.touched)) return;
   const item=p.ref?p.ref.key:p.item; if(!item) return;
-  DB.records.push({id:uid(),st:S.studentId,t:Date.now(),area:p.area,lvl:p.lvl,act:p.act,item,tries:Math.max(1,tries),acc:0,ms:Math.round(performance.now()-p.t0),fail:true});
+  // el abandono cuenta como un intento más, además de los avisos recibidos
+  DB.records.push({id:uid(),st:S.studentId,t:Date.now(),area:p.area,lvl:p.lvl,act:p.act,item,tries:tries+1,acc:0,ms:Math.round(performance.now()-p.t0),fail:true});
   save();
 }
 window.addEventListener("pagehide",flushPending);
