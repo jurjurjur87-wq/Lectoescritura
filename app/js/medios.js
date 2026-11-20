@@ -1,14 +1,15 @@
 "use strict";
 /* =========================================================
-   ALMACÉN DE ARCHIVOS (IndexedDB): audios grabados y pictogramas
+   ALMACÉN (IndexedDB): audios, pictogramas, registros de progreso y memoria de lo reciente
    ========================================================= */
 const IDB = (() => {
   let dbp = null;
   function open() {
     if (!dbp) dbp = new Promise((res, rej) => {
       if (!window.indexedDB) return rej(new Error("Sin IndexedDB"));
-      const r = indexedDB.open("lectoescritura", 1);
-      r.onupgradeneeded = () => { const d = r.result; d.createObjectStore("audios"); d.createObjectStore("pictos"); };
+      const r = indexedDB.open("lectoescritura", 2);
+      r.onupgradeneeded = () => { const d = r.result;                    // v2: registros de progreso y memoria de lo reciente
+        ["audios", "pictos", "records", "meta"].forEach(n => { if (!d.objectStoreNames.contains(n)) d.createObjectStore(n); }); };
       r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
     });
     return dbp;
@@ -22,6 +23,9 @@ const IDB = (() => {
     put: (s, k, v) => tx(s, "readwrite", st => st.put(v, k)),
     del: (s, k) => tx(s, "readwrite", st => st.delete(k)),
     keys: s => tx(s, "readonly", st => st.getAllKeys()),
+    values: s => tx(s, "readonly", st => st.getAll()),
+    putMany: (s, entries) => tx(s, "readwrite", st => { entries.forEach(([k, v]) => st.put(v, k)); }),
+    replaceAll: (s, entries) => tx(s, "readwrite", st => { st.clear(); entries.forEach(([k, v]) => st.put(v, k)); }),
     all: async s => { const ks = await IDB.keys(s); const out = {}; for (const k of ks) out[k] = await IDB.get(s, k); return out; },
   };
 })();

@@ -44,7 +44,7 @@ En todos los juegos, tocar una opción solo la marca (si es un dibujo, además l
 - La **letra escolar** (solo minúsculas, con rabito de entrada) se usa en toda la app: tarjetas, opciones, palabras y frases, que van enteras en minúscula. Las palabras se escriben enlazadas, y los puntos, tildes y rayas se hacen al final.
 
 ### Contenidos
-- Banco de **casi 400 palabras** con sílabas y dibujo, **unas 185 frases** y **más de 750 escenas**. Las actividades se generan al azar y la app recuerda lo que ha salido (también entre sesiones) para no repetirlo enseguida.
+- Banco de **casi 400 palabras** con sílabas y dibujo, **unas 185 frases** y **más de 750 escenas**. Las actividades se generan al azar y la app recuerda lo que le ha salido **a cada alumno** (también entre sesiones) para no repetírselo enseguida.
 - **Palabras y frases propias** del docente (nombres del alumnado, vocabulario del tema…), con separación en sílabas automática y foto opcional.
 - **Pictogramas de ARASAAC**: se descargan una vez y se usan solos en todas las actividades. Si falta alguno, se usa el emoji. Cada dibujo se puede cambiar eligiendo otro pictograma o una foto propia.
 - **Audios grabados por el docente** para letras, sílabas, palabras, frases, ánimos y **enunciados** (se graban por trozos, por ejemplo «¿Qué palabra empieza por…», y la app añade la sílaba o palabra). Si no hay grabación, se usa la voz del equipo.
@@ -57,14 +57,14 @@ En todos los juegos, tocar una opción solo la marca (si es un dibujo, además l
 ### Para el docente
 - Cuentas con PIN. Puede haber **varios administradores** (siempre al menos uno); la administración se puede transferir.
 - Clases compartidas entre docentes (tutora + PT + AL). Alta rápida pegando una lista de nombres.
-- **Progreso**: resumen de la clase, evolución semanal por áreas, mapa por letras y lo que más le cuesta a cada alumno. Cada aviso cuenta como intento, y un ejercicio que no se termina bien cuenta como fallo.
+- **Progreso**: resumen de la clase, evolución semanal por áreas, mapa por letras, resultados **por actividad** y lo que más le cuesta a cada alumno. Cada aviso cuenta como intento, y un ejercicio que no se termina bien cuenta como fallo.
 - **Informe imprimible** por alumno (o en PDF), con observaciones.
 - **Ficha de repaso** para imprimir: letras, sílabas, palabras o lo que más le cuesta, con la letra del alumno (también escolar), modelo, copias punteadas y pauta libre.
 - **Modo proyección** («Proyectar» en el panel o «Toda la clase»): actividades a pantalla completa para el grupo, sin guardar el progreso de nadie.
 - **Bloqueo del aula**: clase fija en el equipo; cambiar de clase y el modo proyección piden PIN.
 - **Copias de seguridad** en archivo (con o sin audios), con recordatorio cada 14 días.
 
-Los datos se guardan **solo en el dispositivo** donde se usa la app (en el navegador). No se envía nada a internet. La app pide al navegador que no borre sus datos.
+Los datos se guardan **solo en el dispositivo** donde se usa la app (en el navegador). No se envía nada a internet. La app pide al navegador que no borre sus datos. El progreso se guarda en la base de datos del navegador (IndexedDB), sin el límite de espacio de unos 5 MB del almacenamiento sencillo, así que aguanta años de uso diario en una pizarra compartida.
 
 ## Cómo usarla
 

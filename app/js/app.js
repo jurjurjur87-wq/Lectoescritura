@@ -23,9 +23,39 @@ function applyCustom(){
 }
 applyCustom();
 let storageOK = true;
+/* Los registros de progreso van a IndexedDB (sin el límite de ~5 MB de localStorage) y se guardan de uno en uno.
+   El resto (docentes, clases, alumnado, ajustes) sigue en localStorage. Si IndexedDB falla, todo sigue en localStorage. */
+const REC={ok:false, persisted:new Set()};
+async function initRecords(){
+  try{
+    const rows=await IDB.values("records");
+    const fromLS=DB.records||[];
+    if(fromLS.length){                                    // paso único: lo que había en localStorage se traslada
+      const have=new Set(rows.map(r=>r.id)); const add=fromLS.filter(r=>r&&r.id&&!have.has(r.id));
+      if(add.length) await IDB.putMany("records",add.map(r=>[r.id,r]));
+      rows.push(...add);
+    }
+    rows.sort((a,b)=>a.t-b.t);
+    DB.records=rows; REC.persisted=new Set(rows.map(r=>r.id)); REC.ok=true;
+    save();                                               // localStorage queda solo con lo ligero
+  }catch(e){ REC.ok=false; }
+}
+function syncRecords(){
+  const recs=DB.records; const fresh=[];
+  for(let i=recs.length-1;i>=0&&!REC.persisted.has(recs[i].id);i--) fresh.push(recs[i]);
+  if(recs.length-fresh.length!==REC.persisted.size){       // se han borrado registros (alumno, clase o todo): se reescribe
+    REC.persisted=new Set(recs.map(r=>r.id));
+    IDB.replaceAll("records",recs.map(r=>[r.id,r])).catch(()=>toast("No se ha podido guardar el progreso"));
+    return;
+  }
+  if(!fresh.length) return;
+  fresh.forEach(r=>REC.persisted.add(r.id));
+  IDB.putMany("records",fresh.map(r=>[r.id,r])).catch(()=>{ fresh.forEach(r=>REC.persisted.delete(r.id)); toast("No se ha podido guardar el progreso"); });
+}
 function save(){
-  try{ localStorage.setItem(LS_KEY,JSON.stringify(DB)); storageOK=true; }
+  try{ localStorage.setItem(LS_KEY,JSON.stringify(REC.ok?Object.assign({},DB,{records:[]}):DB)); storageOK=true; }
   catch(e){ if(storageOK) toast("No se ha podido guardar en este equipo"); storageOK=false; }
+  if(REC.ok) syncRecords();
 }
 const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const byId = (arr,id)=>arr.find(x=>x.id===id);
@@ -392,15 +422,19 @@ function pools(st){
   let short=SHORT_PHRASES.filter(x=>ok(x.t.replace(/[.,]/g,""))); if(short.length<8) short=SHORT_PHRASES;
   return {letters:enabledLetters(st), syl, words, phr, short, multi:words.filter(w=>w.s.length>1)};
 }
-// Lo que ha salido hace poco (en este equipo), para no repetirlo enseguida. Se guarda entre sesiones.
-const RECENT=(()=>{ try{ return JSON.parse(localStorage.getItem("lectoescritura.recent")||"[]"); }catch(e){ return []; } })();
+// Lo que ha salido hace poco a cada alumno, para no repetírselo enseguida. Se guarda entre sesiones.
+let RECENT_ALL={};
+async function initRecent(){ try{ localStorage.removeItem("lectoescritura.recent"); RECENT_ALL=(await IDB.get("meta","recent"))||{}; }catch(e){ RECENT_ALL={}; } }
+const recentList=()=>{ const k=S.studentId||(S.demo?"clase:"+S.groupId:"docente"); return RECENT_ALL[k]||(RECENT_ALL[k]=[]); };
 const keyOf=x=>typeof x==="string"?x:(x.w||x.t||x.key||JSON.stringify(x));
 let _recT=null;
-function remember(k){ RECENT.push(k); while(RECENT.length>250) RECENT.shift();
-  clearTimeout(_recT); _recT=setTimeout(()=>{ try{ localStorage.setItem("lectoescritura.recent",JSON.stringify(RECENT)); }catch(e){} },500); }
+function remember(k){ const R=recentList(); R.push(k); while(R.length>250) R.shift();
+  clearTimeout(_recT); _recT=setTimeout(()=>{ const ids=new Set(DB.students.map(s=>s.id));
+    Object.keys(RECENT_ALL).forEach(k=>{ if(!ids.has(k)&&!k.startsWith("clase:")&&k!=="docente") delete RECENT_ALL[k]; });
+    IDB.put("meta","recent",RECENT_ALL).catch(()=>{}); },800); }
 function pickFresh(arr,m=1,kf=keyOf){
   if(!arr.length) return [];
-  const fresh=arr.filter(x=>!RECENT.includes(kf(x))); const src=fresh.length>=Math.max(m,3)?fresh:arr;
+  const R=recentList(); const fresh=arr.filter(x=>!R.includes(kf(x))); const src=fresh.length>=Math.max(m,3)?fresh:arr;
   const out=[]; const bag=shuffle(src);
   while(out.length<m){ const it=bag.length?bag.pop():pick(src); if(out.includes(it)&&src.length>out.length) continue; out.push(it); remember(kf(it)); }
   return out;
@@ -918,7 +952,7 @@ function actReverse(it,ctx){
 function randomScene(){
   let sc;
   for(let i=0;i<25;i++){ const a=pick(SCENE_ACT); const s=pick(SCENE_SUBJ.filter(x=>a.who.includes(x.k))); const o=pick(a.objs);
-    sc={s,a,o}; if(!RECENT.includes(sceneText(sc))) break; }
+    sc={s,a,o}; if(!recentList().includes(sceneText(sc))) break; }
   remember(sceneText(sc)); return sc;
 }
 function sceneText(sc){ return `${sc.s.t} ${sc.a.t} ${sc.o.t}.`; }
@@ -1458,12 +1492,20 @@ function studentAnalysis(s){
   const pl1=per("lectura"), pe1=per("escritura");
   const cellL=l=>{const a=pl1[l]; if(!a) return null; return Math.round(a.filter(r=>r.tries===1&&!r.fail).length/a.length*100);};
   const cellE=l=>{const a=pe1[l]; if(!a) return null; return Math.round(a.reduce((x,r)=>x+r.acc,0)/a.length);};
-  const items=[...new Set(recs.filter(r=>r.lvl>1).map(r=>r.area+"|"+r.item))].map(k=>{const [area,item]=k.split("|");const rs=recs.filter(r=>r.area===area&&r.item===item);
+  const items=[...new Set(recs.filter(r=>r.lvl>1&&r.item&&!/^[a-zá-ú-]+:/.test(r.item)).map(r=>r.area+"|"+r.item))].map(k=>{const [area,item]=k.split("|");const rs=recs.filter(r=>r.area===area&&r.item===item);
     const v=area==="escritura"?rs.reduce((a,r)=>a+r.acc,0)/rs.length:rs.filter(r=>r.tries===1&&!r.fail).length/rs.length*100; return {area,item,v:Math.round(v),n:rs.length};});
   const hardest=items.filter(x=>x.v<70).sort((a,b)=>a.v-b.v).slice(0,10);
   const mastered=LETTERS.filter(l=>(cellL(l)??-1)>=80&&(cellE(l)??-1)>=80);
   const pending=LETTERS.filter(l=>{const a=cellL(l),b=cellE(l); return (a!=null&&a<50)||(b!=null&&b<50);});
-  return {recs,sm,wk,cellL,cellE,hardest,mastered,pending};
+  // resumen por actividad: veces, resultado y última vez
+  const AREAS=["escucha","lectura","escritura"]; const byAct={};
+  recs.forEach(r=>{ if(!r.act) return; const k=r.area+"|"+r.lvl+"|"+r.act; (byAct[k]=byAct[k]||[]).push(r); });
+  const acts=Object.entries(byAct).map(([k,rs])=>{ const [area,lvl,act]=k.split("|");
+    const v=area==="escritura"?rs.reduce((a,r)=>a+r.acc,0)/rs.length:rs.filter(r=>r.tries===1&&!r.fail).length/rs.length*100;
+    const pos=(CATALOG[area]||[]).findIndex(e=>e.act===act&&e.lvl===+lvl);
+    return {area,lvl:+lvl,act,name:actName(area,+lvl,act),n:rs.length,v:Math.round(v),fails:rs.filter(r=>r.fail).length,last:Math.max(...rs.map(r=>r.t)),ord:AREAS.indexOf(area)*1000+(pos<0?999:pos)}; })
+    .sort((a,b)=>a.ord-b.ord);
+  return {recs,sm,wk,cellL,cellE,hardest,mastered,pending,acts};
 }
 function weeklyChart(wk){
   const Wd=640,Hd=220,pl=36,pb=28,bw=(Wd-pl-10)/wk.length;
@@ -1497,6 +1539,9 @@ function studentProgress(body,s){
   <div class="panel"><h3>Evolución semanal</h3>${weeklyChart(A.wk)}${recs.length?"":`<p class="empty">Todavía no hay actividad registrada.</p>`}</div>
   <div class="panel">${heat(A.cellL,"Reconocimiento de letras (lectura)")}${heat(A.cellE,"Trazado de letras (escritura)")}${heatLegend}</div>
   ${A.hardest.length?`<div class="panel"><h3>Lo que más le cuesta (sílabas, palabras y frases)</h3>${A.hardest.map(x=>`<span class="chip pct" style="background:${pctColor(x.v)}">${{lectura:"Lectura",escritura:"Escritura",escucha:"Escuchar"}[x.area]} · ${esc(x.item)} · ${x.v} %</span>`).join(" ")}</div>`:""}
+  ${A.acts.length?`<div class="panel"><h3>Por actividad</h3><p class="muted small-t" style="margin-top:0">Escuchar y Leer: aciertos a la primera. Escribir: precisión del trazado.</p><div class="tw"><table><thead><tr><th>Área</th><th>Nivel</th><th>Actividad</th><th>Veces</th><th>Resultado</th><th>Sin terminar</th><th>Última vez</th></tr></thead><tbody>
+    ${A.acts.map(x=>`<tr><td>${AREA_TITLE[x.area]}</td><td>${esc(LEVELS[x.area][x.lvl]||"")}</td><td><b>${esc(x.name)}</b></td><td>${x.n}</td><td><span class="chip pct" style="background:${pctColor(x.v)}">${x.v} %</span></td><td>${x.fails||"—"}</td><td>${fmtDate(x.last)}</td></tr>`).join("")}
+  </tbody></table></div></div>`:""}
   <div class="panel"><h3>Actividad reciente</h3>${recs.length?`<div class="tw"><table><thead><tr><th>Fecha</th><th>Área</th><th>Actividad</th><th>Ejercicio</th><th>Intentos</th><th>Resultado</th></tr></thead><tbody>
     ${recs.slice(-15).reverse().map(r=>`<tr><td>${new Date(r.t).toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</td><td>${{lectura:"Lectura",escritura:"Escritura",escucha:"Escuchar"}[r.area]}</td><td>${actName(r.area,r.lvl,r.act)}</td><td><b>${esc(r.item)}</b></td><td>${r.tries}</td><td>${r.fail?`<span class="chip pct" style="background:#F8D3D1">Sin terminar</span>`:r.acc+" %"}</td></tr>`).join("")}
   </tbody></table></div>`:`<div class="empty">Sin actividad.</div>`}</div>`);
@@ -1539,6 +1584,7 @@ function openReport(s){
       <div><h2>Letras a reforzar</h2><p>${A.pending.length?A.pending.join(" "):"Ninguna por debajo del 50 %."}</p></div>
     </section>
     ${A.hardest.length?`<section><h2>Sílabas, palabras y frases que más le cuestan</h2><p>${A.hardest.map(x=>`${esc(x.item)} (${{lectura:"lectura",escritura:"escritura",escucha:"escuchar"}[x.area]}, ${x.v} %)`).join(" · ")}</p></section>`:""}
+    ${A.acts.length?`<section><h2>Resultados por actividad</h2><table class="r-t r-acts"><tr><td><b>Actividad</b></td><td><b>Veces</b></td><td><b>Resultado</b></td></tr>${A.acts.map(x=>`<tr><td>${AREA_TITLE[x.area]} · ${esc(x.name)}</td><td>${x.n}</td><td>${x.v} %</td></tr>`).join("")}</table><p class="muted small-t">Escuchar y Leer: aciertos a la primera. Escribir: precisión del trazado.</p></section>`:""}
     <section><h2>Observaciones</h2><textarea data-notes class="r-notes" placeholder="Escribe aquí tus observaciones. Se guardan en la ficha del alumno.">${esc(s.notes||"")}</textarea><div class="r-notes-print">${esc(s.notes||"")}</div></section>
     <footer><span>Docente: ${esc(t?t.name:"")}</span><span>Lectoescritura</span></footer>
   </article>`;
@@ -1950,4 +1996,4 @@ if(DESKTOP && DESKTOP.onCloseRequest){
 }
 // Pedir al navegador que no borre los datos aunque falte espacio
 try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persisted().then(p=>{ if(!p) navigator.storage.persist(); }); }catch(e){}
-Promise.all([AUDIO.init(),PICTO.init()]).finally(()=>{ screenGroups(); autoBackup(); });
+Promise.all([AUDIO.init(),PICTO.init(),initRecords(),initRecent()]).finally(()=>{ screenGroups(); autoBackup(); });
