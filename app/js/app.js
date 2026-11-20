@@ -154,6 +154,7 @@ function tryAgain(){ if(S.pending) S.pending.tries++; say("Prueba otra vez","avi
 const app=document.getElementById("app");
 function h(html){ app.innerHTML=html; }
 function toast(msg){
+  document.querySelectorAll(".toast").forEach(x=>x.remove());     // un aviso cada vez, sin amontonarse
   const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t);
   setTimeout(()=>t.remove(),2800);
 }
@@ -295,9 +296,12 @@ function screenGroups(force){
         <span class="big deco">${g.icon||"🏫"}</span><span>${esc(g.name)}</span>
         <small>${DB.students.filter(s=>s.group===g.id).length} alumnos</small>
       </button>`).join("")}</div>`
-    :`<div class="empty"><p style="font-size:1.3em">Todavía no hay clases.</p><p>Pulsa el engranaje de arriba a la derecha para entrar como docente y crear la primera.</p></div>`}
+    :`<div class="empty start-box"><p style="font-size:1.3em">Todavía no hay clases.</p>
+      ${DB.teachers.length?`<button class="btn primary big-btn" data-start>👩‍🏫 Entrar como docente y crear la primera clase</button>`
+        :`<p>Para empezar, crea tu cuenta de docente. Después podrás crear la clase y añadir al alumnado.</p><button class="btn primary big-btn" data-start>👩‍🏫 Empezar: crear mi cuenta</button>`}</div>`}
   </div>`);
   app.querySelector("[data-teacher]").onclick=teacherLogin;
+  const sb0=app.querySelector("[data-start]"); if(sb0) sb0.onclick=teacherLogin;
   const fb=app.querySelector("[data-fs]"); if(fb) fb.onclick=toggleFullscreen;
   app.querySelector("[data-lotd]").onclick=()=>{ const l=letterOfDay(); const w=LETTER_WORD[l]; say(`La letra de hoy es la ${LETTER_NAMES[l]}, de ${w}`,"letra:"+l); };
   app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{S.groupId=b.dataset.g; screenStudents();});
@@ -371,6 +375,7 @@ function screenArea(area){
   app.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>startActivity(area,CATALOG[area][+b.dataset.a]));
 }
 function startActivity(area,e){
+  if(!DB.settings.tried){ DB.settings.tried=true; save(); }
   const st=student(); S.area=area;
   if(area==="escritura"&&e.lvl===1&&e.act==="trazo") return screenAlphabet();
   runRound(area,e.lvl,buildItems(area,e.lvl,st,roundLen(st),e.act),()=>startActivity(area,e),e.name);
@@ -1164,12 +1169,15 @@ function pinPad(t){
 function teacherSetup(){
   modal(`<h3>Bienvenida</h3><p class="muted">Crea la primera cuenta docente. Será la de administración: podrá ver todas las clases y dar de alta a otros docentes.</p>
   <div class="form"><label>Nombre<input type="text" data-n placeholder="Ej.: Seño Marta"></label>
-  <label>PIN de 4 cifras<input type="password" inputmode="numeric" maxlength="4" data-p></label></div>
+  <label>Elige un PIN de 4 cifras<input type="password" inputmode="numeric" maxlength="4" data-p></label>
+  <label>Repite el PIN<input type="password" inputmode="numeric" maxlength="4" data-p2></label>
+  <p class="muted small-t" style="margin:0">Apúntalo en un sitio seguro: lo necesitarás para entrar en el panel. Si lo olvidas, otra cuenta de administración puede cambiarlo.</p></div>
   <div class="row end"><button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Crear</button></div>`,(m,close)=>{
     m.querySelector("[data-x]").onclick=close;
     m.querySelector("[data-ok]").onclick=()=>{
       const n=m.querySelector("[data-n]").value.trim(), p=m.querySelector("[data-p]").value.trim();
       if(!n||!/^\d{4}$/.test(p)) return toast("Escribe un nombre y un PIN de 4 cifras");
+      if(p!==m.querySelector("[data-p2]").value.trim()) return toast("Los dos PIN no coinciden");
       const t={id:uid(),name:n,pin:p,admin:true}; DB.teachers.push(t); save(); close();
       S.teacherId=t.id; S.tTab="grupos"; teacherPanel();
     };
@@ -1185,6 +1193,18 @@ function backupBanner(){
   if(days!==null && days<14) return "";
   return `<div class="banner">${ICON.lock}<span>${days===null?"Todavía no has hecho ninguna copia de seguridad.":`Hace ${days} días de la última copia de seguridad.`}</span><button class="btn small" data-gobackup>Hacer copia</button></div>`;
 }
+// Primeros pasos: se ve hasta que está todo hecho (o se oculta)
+function firstSteps(){
+  if(DB.settings.stepsHidden) return "";
+  const gs=myGroups(); const gids=new Set(gs.map(g=>g.id));
+  const hasSt=DB.students.some(s=>gids.has(s.group)); const tried=DB.records.length>0||DB.settings.tried;
+  if(gs.length&&hasSt&&tried) return "";
+  const step=(n,done,label,k,enabled)=>`<li class="${done?"done":""}"><span class="st-n">${done?"✓":n}</span><span class="grow">${label}</span>${done?"":`<button class="btn small ${enabled?"primary":""}" data-step="${k}" ${enabled?"":"disabled"}>${n===1?"Crear clase":n===2?"Añadir alumnos":"Probar"}</button>`}</li>`;
+  return `<div class="panel steps"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Primeros pasos</h3><button class="btn small" data-step="ocultar">Ocultar</button></div>
+    <ol>${step(1,gs.length>0,"Crea una clase (por ejemplo, «Infantil 5 años A»)","clase",true)}
+    ${step(2,hasSt,"Añade al alumnado: pega la lista de nombres","alumnos",gs.length>0)}
+    ${step(3,tried,"Pruébalo: elige un alumno o «Toda la clase» y haz una actividad","probar",hasSt)}</ol></div>`;
+}
 function teacherPanel(){
   flushPending(); S.screenSeq=(S.screenSeq||0)+1;
   const t=me(); if(!t) return screenGroups(true);
@@ -1197,10 +1217,15 @@ function teacherPanel(){
   h(`<div class="teacher">
     <div class="top"><h1>Panel docente</h1><div class="who">👩‍🏫 <span class="nm">${esc(t.name)}</span></div><button class="btn small primary" data-proj>${ICON.expand} Proyectar</button><button class="btn small" data-out>Salir</button></div>
     <div class="tabs">${tabs.map(([k,l])=>`<button data-tab="${k}" class="${S.tTab===k?"on":""}">${l}</button>`).join("")}</div>
-    <div class="main" style="padding-top:1em">${backupBanner()}<div data-body></div></div></div>`);
+    <div class="main" style="padding-top:1em">${backupBanner()}${firstSteps()}<div data-body></div></div></div>`);
   app.querySelector("[data-out]").onclick=()=>{S.teacherId=null;screenGroups(true);};
   app.querySelector("[data-proj]").onclick=startProjection;
   app.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{S.tTab=b.dataset.tab; S.tStudent=null; teacherPanel();});
+  app.querySelectorAll("[data-step]").forEach(b=>b.onclick=()=>{ const k=b.dataset.step;
+    if(k==="clase"){ S.tTab="grupos"; teacherPanel(); groupForm(null); }
+    else if(k==="alumnos"){ const g=myGroups()[0]; S.tGroup=g.id; S.tTab="alumnos"; teacherPanel(); bulkAdd(g); }
+    else if(k==="probar"){ const g=myGroups().find(x=>DB.students.some(st=>st.group===x.id))||myGroups()[0]; S.teacherId=null; S.groupId=g.id; screenStudents(); }
+    else if(k==="ocultar"){ DB.settings.stepsHidden=true; save(); teacherPanel(); } });
   const gb=app.querySelector("[data-gobackup]"); if(gb) gb.onclick=()=>{S.tTab="copias";teacherPanel();};
   const body=app.querySelector("[data-body]");
   ({grupos:tabGroups,alumnos:tabStudents,progreso:tabProgress,palabras:tabWords,audios:tabAudios,copias:tabBackup,ajustes:tabSettings,docentes:tabTeachers})[S.tTab](body);
@@ -1223,11 +1248,12 @@ function startProjection(){
 /* ---- Clases ---- */
 function cfgFields(cfg){
   return `<div class="two">
-    <label>Nivel de lectura<select data-cl>${LEVELS.lectura.slice(1).map((n,i)=>`<option value="${i+1}" ${cfg.lectura==i+1?"selected":""}>${i+1}. ${n}</option>`).join("")}</select></label>
-    <label>Nivel de escritura<select data-ce>${LEVELS.escritura.slice(1).map((n,i)=>`<option value="${i+1}" ${cfg.escritura==i+1?"selected":""}>${i+1}. ${n}</option>`).join("")}</select></label>
-    <label>Nivel de escuchar<select data-cu>${LEVELS.escucha.slice(1).map((n,i)=>`<option value="${i+1}" ${(cfg.escucha||1)==i+1?"selected":""}>${i+1}. ${n}</option>`).join("")}</select></label>
+    <label>Escuchar<select data-cu>${LEVELS.escucha.slice(1).map((n,i)=>`<option value="${i+1}" ${(cfg.escucha||1)==i+1?"selected":""}>${i+1}. ${n}</option>`).join("")}</select></label>
+    <label>Leer<select data-cl>${LEVELS.lectura.slice(1).map((n,i)=>`<option value="${i+1}" ${cfg.lectura==i+1?"selected":""}>${i+1}. ${n}</option>`).join("")}</select></label>
+    <label>Escribir<select data-ce>${LEVELS.escritura.slice(1).map((n,i)=>`<option value="${i+1}" ${cfg.escritura==i+1?"selected":""}>${i+1}. ${n}</option>`).join("")}</select></label>
     <label>Tipo de letra<select data-cf>${Object.entries(FONTS).map(([k,f])=>`<option value="${k}" ${cfg.font==k?"selected":""}>${f.label}</option>`).join("")}</select></label>
-  </div>`;
+  </div>
+  <p class="muted small-t" style="margin:.6em 0 0">El nivel indica por dónde empezar: el alumno puede abrir todas las actividades, pero las de su nivel aparecen marcadas con una estrella ⭐.</p>`;
 }
 const readCfg=m=>({lectura:+m.querySelector("[data-cl]").value,escritura:+m.querySelector("[data-ce]").value,escucha:+m.querySelector("[data-cu]").value,font:m.querySelector("[data-cf]").value});
 function tabGroups(body){
@@ -1236,7 +1262,7 @@ function tabGroups(body){
   ${gs.length?gs.map(g=>{const n=DB.students.filter(s=>s.group===g.id).length;
     const tn=(g.teachers||[]).map(id=>byId(DB.teachers,id)).filter(Boolean).map(x=>`<span class="chip">${esc(x.name)}</span>`).join("");
     return `<div class="panel"><div class="list-item"><span class="av gicon" style="--gc:${g.color}">${g.icon||"🏫"}</span>
-    <div class="grow"><b>${esc(g.name)}</b>${DB.settings.lock&&DB.settings.fixedGroup===g.id?` <span class="chip">Clase fija en este equipo</span>`:""}<div class="muted small-t">${n} alumnos · Por defecto: Escuchar ${LEVELS.escucha[g.defaults.escucha||1]} · Leer ${LEVELS.lectura[g.defaults.lectura]} · Escribir ${LEVELS.escritura[g.defaults.escritura]} · ${FONTS[g.defaults.font].label}</div><div>${tn}</div></div>
+    <div class="grow"><b>${esc(g.name)}</b>${DB.settings.lock&&DB.settings.fixedGroup===g.id?` <span class="chip">Clase fija en este equipo</span>`:""}<div class="muted small-t">${n} alumnos · Empieza en: Escuchar ${LEVELS.escucha[g.defaults.escucha||1]} · Leer ${LEVELS.lectura[g.defaults.lectura]} · Escribir ${LEVELS.escritura[g.defaults.escritura]} · ${FONTS[g.defaults.font].label}</div><div>${tn}</div></div>
     <button class="btn small" data-edit="${g.id}">Editar</button><button class="btn small" data-st="${g.id}">Alumnado</button></div></div>`;}).join("")
   :`<div class="panel empty">Aún no tienes clases. Crea la primera con «Nueva clase».</div>`}`;
   body.querySelector("[data-new]").onclick=()=>groupForm(null);
@@ -1252,7 +1278,8 @@ function groupForm(g){
     <label>Nombre<input type="text" data-n value="${esc(g.name)}" placeholder="Ej.: Infantil 5 años A, Aula PT…"></label>
     <div><b class="small-t">Color</b><div class="row" style="margin-top:.3em">${GROUP_COLORS.map(c=>`<span class="swatch ${c===color?"on":""}" data-c="${c}" style="background:${c}"></span>`).join("")}</div></div>
     <div><b class="small-t">Dibujo</b><div class="avpick" style="margin-top:.3em">${icons.map(i=>`<button data-i="${i}" class="${i===icon?"on":""}">${i}</button>`).join("")}</div></div>
-    <fieldset><legend>Valores por defecto para alumnos nuevos</legend>${cfgFields(g.defaults)}
+    <fieldset><legend>¿Por dónde empieza esta clase?</legend>${cfgFields(g.defaults)}
+      <p class="muted small-t" style="margin:.3em 0 0">Los alumnos que añadas tendrán estos niveles. Después puedes ajustar a cada uno por separado.</p>
       ${isNew?"":`<button class="btn small" data-apply style="margin-top:.8em">Aplicar a todo el alumnado de la clase</button>`}</fieldset>
     <fieldset><legend>Docentes que comparten esta clase</legend>${DB.teachers.map(x=>`<label class="check"><input type="checkbox" data-tt="${x.id}" ${(g.teachers||[]).includes(x.id)?"checked":""}> ${esc(x.name)}</label>`).join("")}</fieldset>
   </div><div class="row end">${isNew?"":`<button class="btn danger" data-del>Eliminar</button>`}<span style="flex:1"></span><button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Guardar</button></div>`,(m,close)=>{
@@ -1266,7 +1293,8 @@ function groupForm(g){
       if(!g.teachers.includes(t.id)&&!t.admin) g.teachers.push(t.id);
       return true;
     };
-    m.querySelector("[data-ok]").onclick=()=>{ if(!collect())return; if(isNew)DB.groups.push(g); save(); close(); teacherPanel(); };
+    m.querySelector("[data-ok]").onclick=()=>{ if(!collect())return; if(isNew)DB.groups.push(g); save(); close();
+      if(isNew){ S.tGroup=g.id; S.tTab="alumnos"; teacherPanel(); toast("Clase creada. Ahora añade al alumnado"); bulkAdd(g); } else teacherPanel(); };
     const ap=m.querySelector("[data-apply]"); if(ap) ap.onclick=()=>{ if(!collect())return;
       confirmBox("¿Aplicar estos niveles y tipo de letra a todo el alumnado de la clase?","Aplicar",()=>{
         DB.students.filter(s=>s.group===g.id).forEach(s=>s.cfg=Object.assign({},g.defaults)); save(); close(); toast("Aplicado"); teacherPanel(); }); };
@@ -1291,22 +1319,45 @@ function helpChips(hp){
   return c.length?c.map(x=>`<span class="chip">${x}</span>`).join(""):`<span class="muted">—</span>`;
 }
 function tabStudents(body){
-  body.innerHTML=groupSelect(`<span style="flex:1"></span><button class="btn primary" data-add>Añadir alumnado</button>`);
+  body.innerHTML=groupSelect(`<span style="flex:1"></span><button class="btn" data-all>Cambiar a toda la clase</button><button class="btn primary" data-add>Añadir alumnado</button>`);
   bindGroupSelect(body); if(!myGroups().length) return;
   const g=byId(DB.groups,S.tGroup);
   const sts=DB.students.filter(s=>s.group===g.id).sort((a,b)=>a.name.localeCompare(b.name,"es"));
-  body.insertAdjacentHTML("beforeend",`<div class="panel">${sts.length?`<div class="tw"><table><thead><tr><th></th><th>Nombre</th><th>Escuchar</th><th>Lectura</th><th>Escritura</th><th>Letra</th><th>Ayudas</th><th>Letras</th></tr></thead><tbody>
+  body.insertAdjacentHTML("beforeend",`<div class="panel">${sts.length?`<div class="tw"><table><thead><tr><th></th><th>Nombre</th><th>Escuchar</th><th>Leer</th><th>Escribir</th><th>Letra</th><th>Ayudas</th><th>Letras trabajadas</th><th></th></tr></thead><tbody>
     ${sts.map(s=>`<tr class="click" data-s="${s.id}"><td style="font-size:1.6em">${s.avatar}</td><td><b>${esc(s.name)}</b></td>
     <td>${LEVELS.escucha[lvlOf(s,"escucha")]}</td><td>${LEVELS.lectura[s.cfg.lectura]}</td><td>${LEVELS.escritura[s.cfg.escritura]}</td><td>${FONTS[s.cfg.font].label}</td>
-    <td>${helpChips(s.helps)}</td><td>${s.letters&&s.letters.length<27?`<span class="chip">${s.letters.length} de 27</span>`:"Todas"}</td></tr>`).join("")}
+    <td>${helpChips(s.helps)}</td><td>${s.letters&&s.letters.length<27?`<span class="chip">${s.letters.length} de 27</span>`:"Todo el abecedario"}</td><td><button class="btn small">${ICON.pencil} Editar</button></td></tr>`).join("")}
   </tbody></table></div>`:`<div class="empty">No hay alumnado en esta clase.</div>`}</div>`);
   body.querySelector("[data-add]").onclick=()=>bulkAdd(g);
+  body.querySelector("[data-all]").onclick=()=>sts.length?classChange(g,sts):toast("Primero añade alumnado");
   body.querySelectorAll("[data-s]").forEach(r=>r.onclick=()=>studentForm(byId(DB.students,r.dataset.s)));
+}
+// Cambiar algo a todo el alumnado de una clase a la vez
+function classChange(g,sts){
+  const keep=`<option value="">— Sin cambiar —</option>`;
+  const lv=(a,k)=>`<label>${a}<select data-k="${k}">${keep}${LEVELS[k].slice(1).map((n,i)=>`<option value="${i+1}">${i+1}. ${n}</option>`).join("")}</select></label>`;
+  const yn=(a,k)=>`<label>${a}<select data-k="${k}">${keep}<option value="1">Sí</option><option value="0">No</option></select></label>`;
+  modal(`<h3>Cambiar a toda la clase «${esc(g.name)}»</h3><p class="muted" style="margin-top:0">Se aplica a los ${sts.length} alumnos. Lo que dejes en «Sin cambiar» se queda como está en cada uno.</p><div class="form"><div class="two">
+    ${lv("Escuchar","escucha")}${lv("Leer","lectura")}${lv("Escribir","escritura")}
+    <label>Tipo de letra<select data-k="font">${keep}${Object.entries(FONTS).map(([k,f])=>`<option value="${k}">${f.label}</option>`).join("")}</select></label>
+    <label>Ejercicios por ronda<select data-k="ronda">${keep}${[4,6,8].map(n=>`<option value="${n}">${n}</option>`).join("")}</select></label>
+    ${yn("Modo sensible","calma")}${yn("Botones grandes","grande")}${yn("Voz más lenta","lenta")}${yn("Apoyo con dibujos","picto")}${yn("Ayuda tras dos fallos","pista")}
+  </div></div><div class="row end"><button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Aplicar</button></div>`,(m,close)=>{
+    m.querySelector("[data-x]").onclick=close;
+    m.querySelector("[data-ok]").onclick=()=>{
+      const v={}; m.querySelectorAll("[data-k]").forEach(x=>{ if(x.value!=="") v[x.dataset.k]=x.value; });
+      if(!Object.keys(v).length) return toast("No has cambiado nada");
+      sts.forEach(s=>{ s.helps=Object.assign(defaultHelps(),s.helps);
+        ["escucha","lectura","escritura"].forEach(k=>{ if(v[k]) s.cfg[k]=+v[k]; }); if(v.font) s.cfg.font=v.font;
+        if(v.ronda) s.helps.ronda=+v.ronda; ["calma","grande","lenta","picto","pista"].forEach(k=>{ if(v[k]!=null) s.helps[k]=v[k]==="1"; }); });
+      save(); close(); toast(`Cambiado en ${sts.length} ${sts.length===1?"alumno":"alumnos"}`); teacherPanel();
+    };
+  });
 }
 function bulkAdd(g){
   modal(`<h3>Añadir alumnado a «${esc(g.name)}»</h3><div class="form">
     <label>Escribe o pega los nombres, uno por línea<textarea data-names placeholder="Lucía&#10;Mateo&#10;Aitana"></textarea></label>
-    <p class="muted" style="margin:0">Se crearán con los valores por defecto de la clase (${LEVELS.lectura[g.defaults.lectura]} / ${LEVELS.escritura[g.defaults.escritura]} / ${FONTS[g.defaults.font].label}) y un animal distinto para cada uno. Después puedes ajustar a cada alumno por separado.</p>
+    <p class="muted" style="margin:0">Empezarán con los niveles de la clase (Escuchar: ${LEVELS.escucha[g.defaults.escucha||1]} · Leer: ${LEVELS.lectura[g.defaults.lectura]} · Escribir: ${LEVELS.escritura[g.defaults.escritura]} · ${FONTS[g.defaults.font].label}) y un animal distinto para cada uno. Después puedes ajustar a cada alumno por separado.</p>
   </div><div class="row end"><button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Añadir</button></div>`,(m,close)=>{
     m.querySelector("[data-x]").onclick=close;
     m.querySelector("[data-ok]").onclick=()=>{
@@ -1315,7 +1366,7 @@ function bulkAdd(g){
       const used=new Set(DB.students.filter(s=>s.group===g.id).map(s=>s.avatar));
       const free=shuffle(AVATARS.filter(a=>!used.has(a)));
       names.forEach((n,i)=>DB.students.push({id:uid(),group:g.id,name:n,avatar:free[i]||pick(AVATARS),cfg:Object.assign({},g.defaults),helps:defaultHelps(),letters:null,notes:""}));
-      save(); close(); toast(`${names.length} alumno(s) añadido(s)`); teacherPanel();
+      save(); close(); toast(names.length===1?"1 alumno añadido":`${names.length} alumnos añadidos`); teacherPanel();
     };
   });
 }
@@ -1844,13 +1895,15 @@ function tabTeachers(body){
   const form=t=>modal(`<h3>${t?"Editar docente":"Nuevo docente"}</h3><div class="form">
     <label>Nombre<input type="text" data-n value="${t?esc(t.name):""}"></label>
     <label class="check"><input type="checkbox" data-adm ${t&&t.admin?"checked":""}> Administración (ve todas las clases y gestiona docentes)</label>
-    <label>${t?"Nuevo PIN (déjalo vacío para no cambiarlo)":"PIN de 4 cifras"}<input type="password" inputmode="numeric" maxlength="4" data-p></label></div>
+    <label>${t?"Nuevo PIN (déjalo vacío para no cambiarlo)":"PIN de 4 cifras"}<input type="password" inputmode="numeric" maxlength="4" data-p></label>
+    <label>Repite el PIN<input type="password" inputmode="numeric" maxlength="4" data-p2></label></div>
     <div class="row end"><button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Guardar</button></div>`,(m,close)=>{
       m.querySelector("[data-x]").onclick=close;
       m.querySelector("[data-ok]").onclick=()=>{
         const n=m.querySelector("[data-n]").value.trim(), p=m.querySelector("[data-p]").value.trim();
         if(!n) return toast("Escribe el nombre");
         if((p||!t) && !/^\d{4}$/.test(p)) return toast("El PIN debe tener 4 cifras");
+        if(p && p!==m.querySelector("[data-p2]").value.trim()) return toast("Los dos PIN no coinciden");
         if(p && DB.teachers.some(x=>x.pin===p&&x!==t)) return toast("Ese PIN ya lo usa otro docente");
         const adm=m.querySelector("[data-adm]").checked;
         if(t && t.admin && !adm && DB.teachers.filter(x=>x.admin).length<=1) return toast("Tiene que haber al menos un administrador");
