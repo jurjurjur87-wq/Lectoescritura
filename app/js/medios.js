@@ -46,6 +46,12 @@ const AUDIO = {
     const u = await this.url(k); if (!u) return false;
     try { if (this.current) this.current.pause(); this.current = new Audio(u); await this.current.play(); return true; } catch (e) { return false; }
   },
+  // Reproduce y espera a que termine (para encadenar trozos de un enunciado)
+  async playWait(k) {
+    const u = await this.url(k); if (!u) return false;
+    try { if (this.current) this.current.pause(); const a = this.current = new Audio(u);
+      await new Promise(res => { a.onended = res; a.onerror = res; a.onpause = res; a.play().catch(res); setTimeout(res, 8000); }); return true; } catch (e) { return false; }
+  },
   async save(k, blob) { await IDB.put("audios", k, blob); this.keys.add(k); if (this.urls[k]) { URL.revokeObjectURL(this.urls[k]); delete this.urls[k]; } },
   async remove(k) { await IDB.del("audios", k); this.keys.delete(k); if (this.urls[k]) { URL.revokeObjectURL(this.urls[k]); delete this.urls[k]; } },
   // Grabación (máx. 6 s)

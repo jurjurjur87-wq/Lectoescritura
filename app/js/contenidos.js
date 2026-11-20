@@ -54,9 +54,9 @@ const ROUND = 6;
 
 // Actividades de cada nivel (en una ronda se van alternando)
 const ACTIVITIES = {
-  lectura:  {1:["toca-letra"], 2:["toca-silaba","falta-silaba"], 3:["elige-palabra","forma-palabra","falta-letra"], 4:["elige-dibujo","ordena-frase","tijeras"]},
-  escritura:{1:["trazo"], 2:["trazo","dictado"], 3:["trazo","dictado"]},
-  escucha:  {1:["contar-silabas","mas-larga","une-silabas","cuenta-palabras"], 2:["sonido-en","empieza-por","termina-en","intrusa"], 3:["elige-escena"], 4:["monta-escena"], 5:["rima","quita-silaba","da-la-vuelta"]}
+  lectura:  {1:["toca-letra"], 2:["toca-silaba","falta-silaba"], 3:["elige-palabra","forma-palabra","falta-letra","une-dibujo","intrusa-lee"], 4:["elige-dibujo","ordena-frase","tijeras","verdad-mentira"]},
+  escritura:{1:["trazo"], 2:["trazo","dictado"], 3:["trazo","dictado","copia","completa"]},
+  escucha:  {1:["contar-silabas","mas-larga","une-silabas","cuenta-palabras","mas-corta"], 2:["sonido-en","empieza-por","termina-en","intrusa","suena-igual"], 3:["elige-escena"], 4:["monta-escena"], 5:["rima","quita-silaba","da-la-vuelta","encadenadas","anade-silaba"]}
 };
 const ACT_NAMES = {"toca-letra":"Escucha y toca la letra","toca-silaba":"Escucha y toca la sílaba","falta-silaba":"¿Qué sílaba falta?",
   "elige-palabra":"¿Qué palabra es?","forma-palabra":"Forma la palabra","falta-letra":"¿Qué letra falta?","elige-dibujo":"Lee y toca el dibujo",
@@ -72,15 +72,19 @@ const CATALOG = {
     {lvl:1,act:"mas-larga",name:"La palabra más larga",icon:"📏"},
     {lvl:1,act:"une-silabas",name:"Une las sílabas",icon:"🧩"},
     {lvl:1,act:"cuenta-palabras",name:"Cuenta las palabras",icon:"🔢"},
+    {lvl:1,act:"mas-corta",name:"¿Cuál es más corta?",icon:"🐜"},
     {lvl:2,act:"sonido-en",name:"¿Dónde suena?",icon:"👂"},
     {lvl:2,act:"empieza-por",name:"¿Cómo empieza?",icon:"🚦"},
     {lvl:2,act:"termina-en",name:"¿Cómo termina?",icon:"🏁"},
     {lvl:2,act:"intrusa",name:"La intrusa",icon:"🕵️"},
+    {lvl:2,act:"suena-igual",name:"¿Suena igual?",icon:"👯"},
     {lvl:3,act:"elige-escena",name:"Escucha y elige",icon:"🖼️"},
     {lvl:4,act:"monta-escena",name:"Monta la escena",icon:"🎬"},
     {lvl:5,act:"rima",name:"Rimas",icon:"🎵"},
     {lvl:5,act:"quita-silaba",name:"Quita una sílaba",icon:"🧽"},
-    {lvl:5,act:"da-la-vuelta",name:"Da la vuelta",icon:"🔄"}
+    {lvl:5,act:"da-la-vuelta",name:"Da la vuelta",icon:"🔄"},
+    {lvl:5,act:"encadenadas",name:"Encadenadas",icon:"🔗"},
+    {lvl:5,act:"anade-silaba",name:"Añade una sílaba",icon:"➕"}
   ],
   lectura:[
     {lvl:1,act:"toca-letra",name:"Busca la letra",icon:"🔍"},
@@ -89,18 +93,26 @@ const CATALOG = {
     {lvl:3,act:"elige-palabra",name:"¿Qué palabra es?",icon:"🏷️"},
     {lvl:3,act:"forma-palabra",name:"Forma la palabra",icon:"🧱"},
     {lvl:3,act:"falta-letra",name:"¿Qué letra falta?",icon:"🔡"},
+    {lvl:3,act:"une-dibujo",name:"Une palabra y dibujo",icon:"🖇️"},
+    {lvl:3,act:"intrusa-lee",name:"La tarjeta equivocada",icon:"🃏"},
     {lvl:4,act:"elige-dibujo",name:"Lee y toca el dibujo",icon:"📖"},
     {lvl:4,act:"ordena-frase",name:"Ordena la frase",icon:"🔀"},
-    {lvl:4,act:"tijeras",name:"Las tijeras",icon:"✂️"}
+    {lvl:4,act:"tijeras",name:"Las tijeras",icon:"✂️"},
+    {lvl:4,act:"verdad-mentira",name:"¿Verdad o mentira?",icon:"🤔"}
   ],
   escritura:[
     {lvl:1,act:"trazo",name:"Repasa las letras",icon:"✏️"},
     {lvl:2,act:"trazo",name:"Repasa sílabas",icon:"🖍️"},
     {lvl:2,act:"dictado",name:"Dictado de sílabas",icon:"🎧"},
     {lvl:3,act:"trazo",name:"Repasa palabras",icon:"🖊️"},
-    {lvl:3,act:"dictado",name:"Dictado de palabras",icon:"📝"}
+    {lvl:3,act:"dictado",name:"Dictado de palabras",icon:"📝"},
+    {lvl:3,act:"copia",name:"Copia la palabra",icon:"📋"},
+    {lvl:3,act:"completa",name:"Completa la palabra",icon:"🔤"}
   ]
 };
+// Frases de verdad o mentira, a partir del banco
+const VERDAD = BANCO_VERDAD.trim().split("\n").flatMap(l=>{ const [k,suj,v,f]=l.split("|");
+  return [...v.split(";").map(p=>({k,t:`${suj} ${p}.`,ok:true})),...f.split(";").map(p=>({k,t:`${suj} ${p}.`,ok:false}))]; });
 function actName(area,lvl,act){ const e=(CATALOG[area]||[]).find(x=>x.act===act&&x.lvl===lvl)||(CATALOG[area]||[]).find(x=>x.act===act); return e?e.name:(ACT_NAMES[act]||act); }
 
 // Parte de la palabra que rima: desde la vocal tónica hasta el final

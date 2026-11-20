@@ -195,7 +195,7 @@ function createStrokeEngine(o) {
   let cur = 0, k = 0, ink = [], doneInk = [], ignoring = false, active = null, errors = 0, devSum = 0, devN = 0;
   let finished = false, demoing = false, pulse = 0, raf = 0;
   const C = Object.assign({ ink: "#3C7DD9", done: "#2E9E5B", guide: "#E9E4F3", dots: "#8A819E", start: "#2E9E5B", future: "#CFC8DD", lines: ["#D9D2E6", "#8FB7F0", "#4E8FE8"] }, o.colors || {});
-  const tk = (o.tol && o.tol.k) || 1;
+  const tk = ((o.tol && o.tol.k) || 1) * (o.blank ? 1.4 : 1);   // sin modelo: algo más de margen
 
   function geometry() {
     const bw = Math.max(1, L.maxX - L.minX), bh = L.maxY - L.minY;
@@ -240,19 +240,21 @@ function createStrokeEngine(o) {
     });
     g.setLineDash([]);
     // camino de cada trazo
-    strokes.forEach((s, i) => {
-      g.strokeStyle = C.guide; g.lineWidth = 15 * u; path(g, s.pts);
-    });
-    strokes.forEach((s, i) => {
-      g.setLineDash([.1, Math.max(7, 5 * u)]); g.lineWidth = Math.max(3, 2.6 * u);
-      g.strokeStyle = i === cur && !finished ? C.dots : C.future; path(g, s.pts); g.setLineDash([]);
-    });
+    if (!o.blank) {                       // en «copia» no se dibuja el modelo, solo la pauta y el punto de inicio
+      strokes.forEach((s, i) => {
+        g.strokeStyle = C.guide; g.lineWidth = 15 * u; path(g, s.pts);
+      });
+      strokes.forEach((s, i) => {
+        g.setLineDash([.1, Math.max(7, 5 * u)]); g.lineWidth = Math.max(3, 2.6 * u);
+        g.strokeStyle = i === cur && !finished ? C.dots : C.future; path(g, s.pts); g.setLineDash([]);
+      });
+    }
     if (!finished && !demoing && strokes[cur]) drawStart(g, strokes[cur], cur + 1);
   }
   function drawStart(g, s, n) {
     const [x, y] = s.samples[0]; const r = Math.max(10, 7 * u);
     // flecha de dirección
-    if (s.samples.length > 3) {
+    if (s.samples.length > 3 && !o.blank) {
       const j = Math.min(s.samples.length - 1, Math.max(2, Math.round(s.samples.length * .3)));
       const a = s.samples[j], b = s.samples[Math.max(0, j - 2)]; const ang = Math.atan2(a[1] - b[1], a[0] - b[0]);
       const sz = Math.max(9, 6 * u);

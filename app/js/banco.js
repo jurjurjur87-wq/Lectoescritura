@@ -266,3 +266,91 @@ const BANCO_ACCIONES = [
   {k:"mirar",t:"mira",e:"👁️",who:[...PERSONAS,"bebé","gato","perro","mono","rey","reina","hada","pingüino"],objs:[{k:"luna",t:"la luna",e:"🌙"},{k:"estrella",t:"una estrella",e:"⭐"},{k:"arcoíris",t:"el arcoíris",e:"🌈"},{k:"mariposa",t:"una mariposa",e:"🦋"},{k:"televisión",t:"la televisión",e:"📺"},{k:"pez",t:"un pez",e:"🐟"}]},
   {k:"coger",t:"coge",e:"✊",who:[...PERSONAS,"bebé","mono","robot","hada"],objs:[{k:"llave",t:"la llave",e:"🔑"},{k:"pelota",t:"la pelota",e:"⚽"},{k:"lápiz",t:"un lápiz",e:"✏️"},{k:"manzana",t:"una manzana",e:"🍎"},{k:"teléfono",t:"el teléfono",e:"📱"},{k:"seta",t:"una seta",e:"🍄"}]}
 ];
+
+// ¿Verdad o mentira?: dibujo|sujeto|cosas verdaderas;...|cosas falsas;...
+const BANCO_VERDAD = `
+pez|El pez|nada;vive en el agua;tiene aletas|vuela;ladra;tiene ruedas;anda en bici
+perro|El perro|ladra;tiene cola;come huesos;tiene cuatro patas|maúlla;vuela;pone huevos;lee libros
+gato|El gato|maúlla;tiene bigotes;bebe leche;caza ratones|ladra;nada en el mar;conduce;tiene alas
+pájaro|El pájaro|vuela;tiene plumas;canta;tiene pico|ladra;tiene ruedas;vive en el mar;lleva gafas
+vaca|La vaca|da leche;come hierba;dice mu;tiene cuernos|vuela;pone huevos;vive en el mar;sabe leer
+gallina|La gallina|pone huevos;tiene plumas;tiene pico|da leche;ladra;tiene ruedas;nada en el río
+oveja|La oveja|tiene lana;come hierba;dice bee|tiene alas;ladra;conduce un coche
+caballo|El caballo|corre mucho;come hierba;tiene cola|vuela;pone huevos;vive en el agua
+pato|El pato|nada;tiene pico;tiene plumas|tiene ruedas;ladra;lleva corbata
+rana|La rana|salta;es verde;vive en la charca|tiene plumas;ladra;es muy grande
+mono|El mono|sube a los árboles;come plátanos;tiene cola|vive en el mar;pone huevos;tiene ruedas
+león|El león|ruge;tiene melena;es fuerte|maúlla;come hierba;vuela
+elefante|El elefante|es grande;tiene trompa;tiene orejas grandes|es pequeño;vuela;cabe en una caja
+jirafa|La jirafa|tiene el cuello largo;es alta;come hojas|es bajita;vive en el mar;ladra
+tortuga|La tortuga|es lenta;tiene caparazón;pone huevos|corre mucho;vuela;tiene alas
+caracol|El caracol|es lento;tiene concha;deja baba|corre mucho;tiene alas;ladra
+abeja|La abeja|hace miel;vuela;tiene alas|da leche;ladra;tiene ruedas
+mariposa|La mariposa|vuela;tiene alas de colores|ladra;nada en el mar;es un pez
+ballena|La ballena|vive en el mar;es enorme;nada|vuela;es pequeña;vive en un árbol
+pingüino|El pingüino|vive en el frío;nada;anda despacio|vive en el desierto;vuela alto;tiene ruedas
+oso|El oso|come miel;es grande;tiene pelo|vuela;pone huevos;es muy pequeño
+conejo|El conejo|salta;come zanahorias;tiene orejas largas|ladra;vuela;come piedras
+ratón|El ratón|es pequeño;come queso;tiene cola|es enorme;vuela;ladra
+araña|La araña|tiene ocho patas;hace telas|tiene dos patas;da leche;canta
+serpiente|La serpiente|no tiene patas;se arrastra|tiene alas;ladra;tiene cuatro patas
+cocodrilo|El cocodrilo|tiene muchos dientes;nada en el río|vuela;come pasteles;tiene plumas
+búho|El búho|vuela de noche;tiene plumas;tiene ojos grandes|ladra;nada en el mar;tiene ruedas
+loro|El loro|habla;tiene plumas;tiene pico|tiene ruedas;vive en el mar;da leche
+sol|El sol|da luz;da calor;sale de día|sale de noche;es frío;es azul
+luna|La luna|sale de noche;está en el cielo|sale de día;está en el mar;se come
+nieve|La nieve|es fría;es blanca;cae en invierno|es caliente;es verde;cae en verano
+fuego|El fuego|quema;da calor|es frío;se bebe;es azul
+agua|El agua|moja;se bebe;está en el mar|quema;es de madera;se come con tenedor
+lluvia|La lluvia|moja;cae de las nubes|quema;sale de la tierra;es de papel
+árbol|El árbol|tiene hojas;tiene tronco;crece|anda;habla;tiene ruedas
+flor|La flor|huele bien;crece en el jardín;tiene pétalos|ladra;se conduce;tiene patas
+manzana|La manzana|es una fruta;se come;puede ser roja|es un animal;ladra;se pone en los pies
+plátano|El plátano|es amarillo;es una fruta;se pela|es azul;ladra;se conduce
+limón|El limón|es amarillo;es ácido|es dulce como un caramelo;vuela;es un juguete
+helado|El helado|es frío;es dulce;se derrite|es caliente;se lee;tiene patas
+pan|El pan|se come;está hecho de harina|se bebe;ladra;es de cristal
+leche|La leche|es blanca;se bebe|es verde;se come con tenedor;vuela
+huevo|El huevo|lo pone la gallina;se rompe|lo pone el perro;es de madera;anda
+queso|El queso|se come;lo hacen con leche|se bebe;vuela;es de metal
+coche|El coche|tiene ruedas;va por la carretera;tiene volante|tiene alas;come hierba;nada
+avión|El avión|vuela;tiene alas;va por el cielo|va por el mar;tiene patas;come pan
+barco|El barco|va por el mar;flota|vuela;va por la carretera;come hierba
+tren|El tren|va por las vías;tiene vagones|vuela;nada;come queso
+bicicleta|La bicicleta|tiene dos ruedas;tiene pedales|tiene alas;ladra;come hierba
+cohete|El cohete|va al espacio;sube muy alto|nada en el río;come pan;es un animal
+pelota|La pelota|es redonda;bota;rueda|es cuadrada;habla;come queso
+libro|El libro|tiene páginas;se lee|se come;ladra;tiene ruedas
+lápiz|El lápiz|sirve para escribir;tiene punta|sirve para comer;ladra;vuela solo
+tijera|La tijera|corta;sirve para cortar papel|se come;canta;es un animal
+cama|La cama|sirve para dormir;es blanda|sirve para cocinar;vuela;come
+silla|La silla|sirve para sentarse;tiene patas|sirve para beber;vuela;canta
+paraguas|El paraguas|se abre cuando llueve;nos tapa del agua|se come;ladra;sirve para dormir
+zapato|El zapato|se pone en el pie|se pone en la cabeza;se come;vuela
+gafas|Las gafas|se ponen en los ojos;ayudan a ver|se ponen en los pies;se comen;ladran
+reloj|El reloj|marca la hora|se come;nada;ladra
+teléfono|El teléfono|sirve para hablar;suena|sirve para comer;es un animal;crece
+llave|La llave|abre la puerta|se come;vuela;ladra
+casa|La casa|tiene puertas;tiene ventanas;tiene tejado|anda;come;tiene alas
+escuela|La escuela|tiene clases;tiene pizarra|está en el mar;se come;vuela
+cama|La cama|tiene almohada|tiene ruedas de coche;vuela
+mano|La mano|tiene cinco dedos;sirve para coger|tiene ruedas;sirve para oír
+ojo|El ojo|sirve para ver|sirve para oír;sirve para comer
+oreja|La oreja|sirve para oír|sirve para ver;sirve para andar
+diente|El diente|es blanco;sirve para morder|es de papel;sirve para oír
+bebé|El bebé|es pequeño;toma biberón;llora|conduce un coche;lee el periódico;es muy alto
+abuelo|El abuelo|es mayor;tiene nietos|es un bebé;vuela;tiene alas
+bombero|El bombero|apaga el fuego;lleva casco|enciende fuegos;vive en el mar
+médico|El médico|cura a las personas|vende pan;es un animal
+payaso|El payaso|hace reír;tiene la nariz roja|da miedo siempre;es un pez
+robot|El robot|es de metal;es una máquina|es un animal;come hierba
+reina|La reina|lleva corona;vive en un castillo|vive en el mar;es una fruta
+tambor|El tambor|hace ruido;se toca con palillos|se come;vuela
+guitarra|La guitarra|tiene cuerdas;suena|se come;ladra;tiene ruedas
+globo|El globo|sube;se llena de aire|es de piedra;ladra;se come
+estrella|La estrella|brilla de noche|sale de día;se come;ladra
+nube|La nube|está en el cielo;es blanca o gris|está en el suelo;se come;ladra
+playa|La playa|tiene arena;está junto al mar|está en el cielo;es de chocolate
+montaña|La montaña|es alta;tiene piedras|es pequeña como un botón;se come
+hielo|El hielo|es frío;se derrite|es caliente;ladra;quema
+`;

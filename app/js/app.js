@@ -36,14 +36,14 @@ const stripAcc = s=>s.toLowerCase().replace(/[áàä]/g,"a").replace(/[éèë]/g
 const wordOf = w=>WORDS.find(x=>x.w===w);
 
 function defaultCfg(){ return {lectura:1,escritura:1,escucha:1,font:"imprenta"}; }
-function defaultHelps(){ return {grande:false,tol:"media",lenta:false,calma:false,picto:true}; }
+function defaultHelps(){ return {grande:false,tol:"media",lenta:false,calma:false,picto:true,pista:true,ronda:6}; }
 
 /* Estado de la sesión */
 const S = {groupId:null, studentId:null, demo:false, demoLevels:null, teacherId:null, tTab:"grupos", tGroup:null, tStudent:null};
 function student(){
   if(S.demo){
     const g=byId(DB.groups,S.groupId);
-    const d={id:"demo",name:"Demostración",avatar:"👩‍🏫",cfg:Object.assign(defaultCfg(),g?g.defaults:{}),helps:defaultHelps(),letters:null};
+    const d={id:"demo",name:"Toda la clase",avatar:"👩‍🏫",cfg:Object.assign(defaultCfg(),g?g.defaults:{}),helps:defaultHelps(),letters:null};
     if(S.demoLevels) Object.assign(d.cfg,S.demoLevels);
     return d;
   }
@@ -89,6 +89,7 @@ function pickVoice(){
 }
 if("speechSynthesis" in window){ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice; }
 function tts(text){
+  SPK++;
   try{
     if(!("speechSynthesis" in window)) return;
     speechSynthesis.cancel();
@@ -100,8 +101,41 @@ function tts(text){
   }catch(e){}
 }
 function say(text,key){
+  SPK++;
   if(key && AUDIO.has(key)){ try{speechSynthesis.cancel();}catch(e){} AUDIO.play(key); return; }
   tts(text);
+}
+/* Enunciados: el docente puede grabarlos por trozos. Si no hay ninguno grabado, se dicen enteros con la voz del equipo */
+let SPK=0;
+const INSTR={
+  "palmadas":"¿Cuántas palmadas tiene?","mas":"¿Cuál tiene más palmadas?","menos":"¿Cuál tiene menos palmadas?",
+  "empieza":"¿Qué palabra empieza por…","tiene":"¿Qué palabra tiene…","termina":"¿Qué palabra termina en…",
+  "intrusa":"Tres palabras empiezan igual. ¿Cuál es la diferente?","rima":"¿Qué palabra rima con…",
+  "si-a":"Si a…","quitas":"…le quitas…","queda":"…¿qué queda?","pones":"…le pones delante…","sale":"…¿qué palabra sale?",
+  "di":"Di…","reves":"…al revés","igual":"¿Empiezan igual?","cadena":"¿Qué palabra empieza como termina…",
+  "cuantas-pal":"¿Cuántas palabras tiene la frase?","trocitos":"Escucha los trocitos y toca el dibujo","escena":"Escucha y toca el dibujo",
+  "verdad":"¿Es verdad o es mentira?","une":"Une cada palabra con su dibujo","equivocada":"¿Qué tarjeta tiene mal la palabra?",
+  "copia":"Copia la palabra","completa":"¿Qué letra falta? Escríbela",
+  "toca":"Toca una de las respuestas","huecos":"Primero completa todos los huecos","ayuda":"Te ayudo: he quitado una"
+};
+const I=id=>({k:"ins:"+id,t:INSTR[id].replace(/…/g,"").trim()});
+const Wd=w=>({k:"palabra:"+w,t:w});
+const Sy=x=>({k:"silaba:"+x,t:x});
+function ttsWait(text){
+  return new Promise(res=>{ let done=false; const fin=()=>{ if(!done){done=true;res();} };
+    try{ if(!("speechSynthesis" in window)) return fin();
+      const u=new SpeechSynthesisUtterance(text); u.lang="es-ES"; if(VOICE) u.voice=VOICE;
+      const st=inStudent()?student():null; u.rate=st&&st.helps&&st.helps.lenta?.65:.9;
+      u.onend=fin; u.onerror=fin; speechSynthesis.resume(); speechSynthesis.speak(u); }catch(e){ fin(); }
+    setTimeout(fin,900+text.length*110); });
+}
+function speak(parts,gap=0){
+  parts=parts.filter(p=>p&&p.t);
+  if(!gap && !parts.some(p=>p.k&&AUDIO.has(p.k))) return tts(parts.map(p=>p.t).join(" "));
+  const my=++SPK; try{speechSynthesis.cancel();}catch(e){}
+  (async()=>{ for(const p of parts){ if(my!==SPK) return;
+    if(p.k&&AUDIO.has(p.k)) await AUDIO.playWait(p.k); else await ttsWait(p.t);
+    if(gap&&my===SPK) await new Promise(r=>setTimeout(r,gap)); } })();
 }
 function praise(name){
   if(DB.settings.praise===false) return;
@@ -276,14 +310,14 @@ function screenStudents(){
     <div class="hero"><h2>¿Quién eres?</h2></div>
     <div class="grid">
       ${sts.map(s=>`<button class="tile" data-s="${s.id}"><span class="big">${s.avatar}</span>${esc(s.name)}</button>`).join("")}
-      <button class="tile demo-tile" data-demo><span class="big">👩‍🏫</span>Demostración<small>No guarda progreso</small></button>
+      <button class="tile demo-tile" data-demo><span class="big">👩‍🏫</span>Toda la clase<small>Proyectar · no guarda progreso</small></button>
     </div>
     ${sts.length?"":`<p class="empty">Esta clase aún no tiene alumnos. Añádelos desde el panel docente.</p>`}
   </div>`);
   bindBack(()=>screenGroups(true));
   const tb=app.querySelector("[data-teacher]"); if(tb) tb.onclick=teacherLogin;
   app.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{S.studentId=b.dataset.s; screenStudentHome();});
-  app.querySelector("[data-demo]").onclick=()=>pinGate("Modo demostración: PIN de docente",()=>{S.demo=true; S.demoLevels=null; screenStudentHome();});
+  app.querySelector("[data-demo]").onclick=()=>pinGate("Proyectar para toda la clase: PIN de docente",()=>{S.demo=true; S.demoLevels=null; screenStudentHome();});
 }
 function screenStudentHome(){
   flushPending(); S.screenSeq=(S.screenSeq||0)+1;
@@ -297,7 +331,7 @@ function screenStudentHome(){
       <button class="tile menu-tile write" data-write><span class="badge">${cnt("escritura")}</span><span class="ico-circle">${ICON.pencil}</span>Escribir</button>
     </div>
     ${S.demo?`<div class="panel demo-bar">
-      <b>Demostración</b>
+      <b>Toda la clase</b>
       <label>Leer <select data-dl>${LEVELS.lectura.slice(1).map((n,i)=>`<option value="${i+1}" ${st.cfg.lectura==i+1?"selected":""}>${n}</option>`).join("")}</select></label>
       <label>Escuchar <select data-du>${LEVELS.escucha.slice(1).map((n,i)=>`<option value="${i+1}" ${lvlOf(st,"escucha")==i+1?"selected":""}>${n}</option>`).join("")}</select></label>
       <label>Escribir <select data-de>${LEVELS.escritura.slice(1).map((n,i)=>`<option value="${i+1}" ${st.cfg.escritura==i+1?"selected":""}>${n}</option>`).join("")}</select></label>
@@ -336,7 +370,7 @@ function screenArea(area){
 function startActivity(area,e){
   const st=student(); S.area=area;
   if(area==="escritura"&&e.lvl===1) return screenAlphabet();
-  runRound(area,e.lvl,buildItems(area,e.lvl,st,ROUND,e.act),()=>startActivity(area,e),e.name);
+  runRound(area,e.lvl,buildItems(area,e.lvl,st,roundLen(st),e.act),()=>startActivity(area,e),e.name);
 }
 function backToArea(){ if(S.area) screenArea(S.area); else screenStudentHome(); }
 
@@ -349,12 +383,23 @@ function pools(st){
   let phr=PHRASES.filter(x=>ok(x.t.replace(/[.,]/g,""))); if(phr.length<3) phr=PHRASES;
   return {letters:enabledLetters(st), syl, words, phr, multi:words.filter(w=>w.s.length>1)};
 }
-const RECENT=[];   // lo que ha salido hace poco (en este equipo), para no repetirlo enseguida
+// Lo que ha salido hace poco (en este equipo), para no repetirlo enseguida. Se guarda entre sesiones.
+const RECENT=(()=>{ try{ return JSON.parse(localStorage.getItem("lectoescritura.recent")||"[]"); }catch(e){ return []; } })();
 const keyOf=x=>typeof x==="string"?x:(x.w||x.t||x.key||JSON.stringify(x));
+let _recT=null;
+function remember(k){ RECENT.push(k); while(RECENT.length>250) RECENT.shift();
+  clearTimeout(_recT); _recT=setTimeout(()=>{ try{ localStorage.setItem("lectoescritura.recent",JSON.stringify(RECENT)); }catch(e){} },500); }
+function pickFresh(arr,m=1,kf=keyOf){
+  if(!arr.length) return [];
+  const fresh=arr.filter(x=>!RECENT.includes(kf(x))); const src=fresh.length>=Math.max(m,3)?fresh:arr;
+  const out=[]; const bag=shuffle(src);
+  while(out.length<m){ const it=bag.length?bag.pop():pick(src); if(out.includes(it)&&src.length>out.length) continue; out.push(it); remember(kf(it)); }
+  return out;
+}
+const roundLen=st=>+((st&&st.helps&&st.helps.ronda)||ROUND);
 function buildItems(area,lvl,st,n=ROUND,only){
   const P=pools(st); const acts=only?[only]:ACTIVITIES[area][lvl]; const items=[];
-  const pickN=(arr,m)=>{ const fresh=arr.filter(x=>!RECENT.includes(keyOf(x))); const src=fresh.length>=Math.max(m,4)?fresh:arr;
-    const out=[]; let bag=[]; while(out.length<m){ if(!bag.length) bag=shuffle(src); const it=bag.pop(); out.push(it); RECENT.push(keyOf(it)); if(RECENT.length>60) RECENT.shift(); } return out; };
+  const pickN=(arr,m)=>pickFresh(arr,m);
   for(let i=0;i<n;i++){
     const act=acts[i%acts.length];
     let it;
@@ -370,6 +415,12 @@ function buildItems(area,lvl,st,n=ROUND,only){
     else if(act==="mas-larga"||act==="termina-en"||act==="intrusa"||act==="rima"){ it={act}; }
     else if(act==="sonido-en"||act==="empieza-por"){ it={act}; }
     else if(act==="elige-escena"||act==="monta-escena"){ it={act,scene:randomScene()}; it.key=sceneText(it.scene); }
+    else if(["mas-corta","suena-igual","encadenadas","anade-silaba","une-dibujo","intrusa-lee"].includes(act)){ it={act}; }
+    else if(act==="verdad-mentira"){ const P2=VERDAD.filter(v=>stripAcc(v.t.toLowerCase()).replace(/[^a-zñ]/g,"").split("").every(c=>enabledLetters(st).includes(c)));
+      const src=(P2.length>=10?P2:VERDAD); const want=Math.random()<.5; it={act,item:pickN(src.filter(v=>v.ok===want),1)[0]}; it.key=it.item.t; }
+    else if(act==="copia"){ const w=pickN(P.words.filter(x=>x.w.length<=7),1)[0]||pickN(WORDS,1)[0]; it={act,key:w.w,word:w}; }
+    else if(act==="completa"){ const w=pickN(P.words.filter(x=>x.w.length>=3&&x.w.length<=8),1)[0]||pickN(WORDS.filter(x=>x.w.length>=3),1)[0];
+      const idx=pick([...w.w].map((c,i)=>/[a-zñ]/.test(c)?i:-1).filter(i=>i>=0)); it={act,key:w.w,word:w,idx}; }
     else if(act==="trazo"||act==="dictado"){
       if(lvl===2) it={act,key:pickN(P.syl,1)[0]};
       else { const w=pickN(P.words.filter(x=>x.w.length<=7),1)[0]||pickN(WORDS,1)[0]; it={act,key:w.w,word:w}; }
@@ -407,9 +458,11 @@ function runRound(area,lvl,items,again,title){
       "elige-palabra":actChooseWord,"elige-dibujo":actChoosePicture,"forma-palabra":actBuild,"ordena-frase":actBuild,
       "dictado":actBuild,"trazo":actTrace,"tijeras":actScissors,
       "contar-silabas":actCountSyl,"mas-larga":actLonger,"une-silabas":actBlend,"cuenta-palabras":actCountWords,"termina-en":actEnds,
-      "intrusa":actOddOne,"rima":actRhyme,"quita-silaba":actDelete,"da-la-vuelta":actReverse,"sonido-en":actSound,"empieza-por":actSound,"elige-escena":actChooseScene,"monta-escena":actBuildScene
+      "intrusa":actOddOne,"rima":actRhyme,"quita-silaba":actDelete,"da-la-vuelta":actReverse,"sonido-en":actSound,"empieza-por":actSound,"elige-escena":actChooseScene,"monta-escena":actBuildScene,
+      "mas-corta":actLonger,"suena-igual":actSameStart,"encadenadas":actChain,"anade-silaba":actAdd,
+      "une-dibujo":actMatch,"intrusa-lee":actWrongCard,"verdad-mentira":actTrueFalse,"copia":actCopy,"completa":actComplete
     }[it.act];
-    if(it.act!=="trazo") startPending({area,lvl,act:it.act,ref:it});
+    if(!["trazo","copia","completa"].includes(it.act)) startPending({area,lvl,act:it.act,ref:it});
     A(it,ctx);
   };
   next();
@@ -432,6 +485,14 @@ function roundEnd(area,good,total,again,title){
   app.querySelector("[data-again]").onclick=again;
   app.querySelector("[data-home]").onclick=backToArea;
 }
+// Tras dos fallos: se apagan las opciones incorrectas menos una
+function giveHint(btns,isOk){
+  const st=student(); if(st&&st.helps&&st.helps.pista===false) return false;
+  const live=btns.filter(b=>!b.disabled); if(live.length<=2) return false;
+  const wrong=shuffle(live.filter(b=>!isOk(+b.dataset.i))); wrong.slice(0,wrong.length-1).forEach(b=>{ b.disabled=true; b.classList.add("off"); b.classList.remove("picked","sel"); });
+  if(S.pending) S.pending.tries++;
+  setTimeout(()=>speak([I("ayuda")]),900); return true;
+}
 const okBar=(label="Comprobar")=>`<div class="row okbar"><button class="btn ok big-btn" data-ok>${ICON.check} ${label}</button></div>`;
 function actHeader(ctx,title){
   return `${topBar(AREA_TITLE[ctx.area]+" · "+esc(title),true)}`;
@@ -447,14 +508,14 @@ function choiceScreen(ctx,{title,prompt,options,correct,fontCss,emo,onSay,sayKey
     ${okBar()}
   </div>`);
   bindBack(backToArea);
-  let tries=0, locked=false, sel=-1; const t0=performance.now();
+  let tries=0, locked=false, sel=-1, hinted=false; const t0=performance.now();
   const sb=app.querySelector("[data-say]"); if(sb) sb.onclick=onSay;
   if(onSay) setTimeout(onSay,350);
   const btns=[...app.querySelectorAll(".opt")];
   // Tocar elige (y, si es un dibujo, lo dice); la respuesta se da con Comprobar
   btns.forEach(b=>b.onclick=()=>{ if(locked) return; sel=+b.dataset.i; btns.forEach(x=>x.classList.toggle("picked",x===b));
     const w=b.querySelector("[data-word]")?.dataset.word; if(w) say(w,"palabra:"+w); });
-  app.querySelector("[data-ok]").onclick=()=>{ if(locked) return; if(sel<0){ tts("Toca una de las respuestas"); return; } check(btns[sel]); };
+  app.querySelector("[data-ok]").onclick=()=>{ if(locked) return; if(sel<0){ speak([I("toca")]); return; } check(btns[sel]); };
   function check(b){
     if(locked) return; const o=options[+b.dataset.i]; tries++;
     if(o.ok){
@@ -464,7 +525,9 @@ function choiceScreen(ctx,{title,prompt,options,correct,fontCss,emo,onSay,sayKey
       setTimeout(()=>ctx.done(tries===1),1400);
     }else{
       b.classList.remove("bad","picked"); void b.offsetWidth; b.classList.add("bad"); sel=-1;
-      tryAgain(); if(onSay) setTimeout(onSay,1100);
+      tryAgain();
+      if(!hinted && tries>=2 && giveHint(btns,i=>options[i].ok)){ hinted=true; tries++; }   // la ayuda cuenta como un intento
+      else if(onSay) setTimeout(onSay,1100);
     }
   }
 }
@@ -554,7 +617,7 @@ function actBuild(it,ctx){
     okBtn.classList.toggle("ready",!slots.includes(null));
   }
   const okBtn=app.querySelector("[data-ok]");
-  okBtn.onclick=()=>{ if(locked) return; if(slots.includes(null)){ tts("Primero completa todos los huecos"); return; } check(); };
+  okBtn.onclick=()=>{ if(locked) return; if(slots.includes(null)){ speak([I("huecos")]); return; } check(); };
   function check(){
     tries++;
     const ok=slots.every((s,i)=>s.t===target[i]);
@@ -572,6 +635,68 @@ function actBuild(it,ctx){
   paint();
 }
 
+/* ---------- LEER: une, tarjeta equivocada, verdad o mentira ---------- */
+const distinctPics=(arr,n)=>{ const out=[], seen=new Set(); for(const w of arr){ if(seen.has(w.e)) continue; seen.add(w.e); out.push(w); if(out.length===n) break; } return out; };
+// Une palabra y dibujo: tres parejas
+function actMatch(it,ctx){
+  const st=student(); applyLook(); const P=pools(st); const fcss=fontOf(st).css;
+  const words=distinctPics(pickFresh(P.words.length>=6?P.words:WORDS,6),3); it.key="une:"+words.map(w=>w.w).join(",");
+  const left=shuffle([...words]), right=shuffle([...words]);
+  const pairs=new Map(); let selL=null, tries=0, locked=false; const t0=performance.now();
+  const COL=["#6A55B5","#E0618A","#2E9E8F"];
+  h(`${actHeader(ctx,actName(ctx.area,ctx.lvl,it.act))}
+  <div class="main">
+    ${dots(ctx.idx,ctx.n)}
+    <div class="prompt"><button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">Toca una palabra y después su dibujo</span></div>
+    <div class="match"><div class="m-col" data-l></div><div class="m-col" data-r></div></div>
+    ${okBar()}
+  </div>`);
+  bindBack(backToArea);
+  const sayIt=()=>speak([I("une")]); app.querySelector("[data-say]").onclick=sayIt; setTimeout(sayIt,350);
+  const L=app.querySelector("[data-l]"), R=app.querySelector("[data-r]");
+  const colorOf=w=>{ const i=[...pairs.keys()].indexOf(w); return i<0?null:COL[i%3]; };
+  function paint(){
+    L.innerHTML=left.map((w,i)=>{ const c=colorOf(w); return `<button class="m-item m-word ${selL===w?"picked":""} ${c?"paired":""}" data-i="${i}" style="font-family:${fcss};${c?`--pc:${c}`:""}">${txt(st,w.w)}</button>`; }).join("");
+    R.innerHTML=right.map((w,i)=>{ const k=[...pairs.entries()].find(e=>e[1]===w); const c=k?colorOf(k[0]):null; return `<button class="m-item m-pic ${c?"paired":""}" data-i="${i}" style="${c?`--pc:${c}`:""}">${pic(w.w,w.e,"emoji in-opt")}</button>`; }).join("");
+    L.querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{ if(locked) return; const w=left[+b.dataset.i]; if(pairs.has(w)){ pairs.delete(w); selL=null; } else selL=selL===w?null:w; paint(); });
+    R.querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{ if(locked) return; const w=right[+b.dataset.i];
+      const owner=[...pairs.entries()].find(e=>e[1]===w); if(owner){ pairs.delete(owner[0]); paint(); return; }
+      if(!selL){ speak([{t:"Primero toca una palabra"}]); return; } pairs.set(selL,w); selL=null; paint(); });
+  }
+  app.querySelector("[data-ok]").onclick=()=>{
+    if(locked) return; if(pairs.size<3){ speak([I("huecos")]); return; }
+    tries++; const wrong=[...pairs.entries()].filter(([a,b])=>a!==b);
+    if(!wrong.length){ locked=true; app.querySelector(".match").classList.add("ok");
+      record(ctx.area,ctx.lvl,it.key,tries,tries===1?100:Math.max(0,100-34*(tries-1)),performance.now()-t0,it.act);
+      celebrate(); praise(); setTimeout(()=>ctx.done(tries===1),1400); return; }
+    locked=true; wrong.forEach(([a])=>{ const i=left.indexOf(a); L.children[i].classList.add("bad"); }); tryAgain();
+    setTimeout(()=>{ wrong.forEach(([a])=>pairs.delete(a)); locked=false; paint(); },1100);
+  };
+  paint();
+}
+// La tarjeta equivocada: una tarjeta tiene la palabra de otro dibujo
+function actWrongCard(it,ctx){
+  const st=student(); const P=pools(st); const fcss=fontOf(st).css;
+  const src=P.words.length>=8?P.words:WORDS;
+  const cards=distinctPics(pickFresh(src,6),3); const odd=pick(cards);
+  const first=w=>stripAcc(w.s[0]);
+  const lie=pick(src.filter(w=>w.e!==odd.e&&!cards.includes(w)&&first(w)===first(odd)))||pick(src.filter(w=>w.e!==odd.e&&!cards.includes(w)));
+  it.key="equivocada:"+odd.w;
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
+    prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Qué tarjeta tiene mal la palabra?</span>`,
+    options:cards.map(w=>({html:`${pic(w.w,w.e,"emoji in-opt")}<span class="card-w" style="font-family:${fcss}">${txt(st,w===odd?lie.w:w.w)}</span>`,ok:w===odd})), emo:true,
+    onSay:()=>speak([I("equivocada")]), record:recFirst(ctx,it)});
+  app.querySelectorAll(".opt").forEach(b=>b.classList.add("picword"));
+}
+// ¿Verdad o mentira?
+function actTrueFalse(it,ctx){
+  const st=student(); const v=it.item; const w=wordOf(v.k)||{w:v.k,e:"❓"};
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
+    prompt:`${pic(w.w,w.e)}<span class="phrase" style="font-family:${fontOf(st).css}">${txt(st,v.t)}</span><button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button>`,
+    options:[{html:`<span class="yn">✅</span><b>Verdad</b>`,ok:v.ok},{html:`<span class="yn">❌</span><b>Mentira</b>`,ok:!v.ok}], two:true,
+    onSay:()=>speak([I("verdad")]), record:recFirst(ctx,it)});
+}
+
 /* ---------- ESCUCHAR: conciencia fonológica y comprensión oral ---------- */
 const recFirst=(ctx,it)=>(tries,ms)=>record(ctx.area,ctx.lvl,it.key,tries,tries===1?100:Math.max(0,100-50*(tries-1)),ms,it.act);
 function actCountSyl(it,ctx){
@@ -586,7 +711,7 @@ function actSound(it,ctx){
   const start=it.act==="empieza-por";
   let target,good,bad;
   for(let tries=0;tries<40;tries++){
-    good=pick(WORDS.filter(w=>w.s.length>1||!start));
+    good=tries<3?pickFresh(WORDS.filter(w=>w.s.length>1||!start),1)[0]:pick(WORDS.filter(w=>w.s.length>1||!start));
     target=start?stripAcc(good.s[0]):stripAcc(pick(good.s));
     const t=target;
     const cand=WORDS.filter(w=>w!==good && (start ? stripAcc(w.s[0])!==t && stripAcc(w.w)[0]!==t[0] : !stripAcc(w.w).includes(t)));
@@ -598,26 +723,24 @@ function actSound(it,ctx){
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">${start?"¿Cuál empieza por":"¿Cuál tiene"} <b class="snd">«${esc(target)}»</b>?</span>`,
     options:opts.map(w=>({html:`${pic(w.w,w.e,"emoji in-opt")}<i class="opt-w" data-word="${esc(w.w)}" hidden></i>`,ok:w===good})), emo:true,
-    onSay:()=>{ say(q); }, record:recFirst(ctx,it)});
+    onSay:()=>speak([I(start?"empieza":"tiene"),Sy(target)]), record:recFirst(ctx,it)});
   app.querySelectorAll(".opt-say").forEach(b=>b.addEventListener("click",e=>{ e.stopPropagation(); say(b.dataset.word,"palabra:"+b.dataset.word); },true));
 }
 /* Lee una lista de trozos con pausas (sílabas separadas) */
-function ttsSeq(parts,gap=450){
-  try{ if(!("speechSynthesis" in window)) return; speechSynthesis.cancel(); const st=inStudent()?student():null;
-    parts.forEach((t,i)=>setTimeout(()=>{ const u=new SpeechSynthesisUtterance(t); u.lang="es-ES"; if(VOICE) u.voice=VOICE; u.rate=st&&st.helps&&st.helps.lenta?.6:.8; speechSynthesis.speak(u); },i*(gap+350))); }catch(e){}
-}
+function ttsSeq(parts,gap=450){ speak(parts.map(t=>Sy(t)),gap); }
 const clapsHTML=k=>`<span class="claps">${Array.from({length:k},()=>`<i>${ICON.clap}</i>`).join("")}</span><b>${k}</b>`;
 const picOpt=w=>`${pic(w.w,w.e,"emoji in-opt")}<i class="opt-w" data-word="${esc(w.w)}" hidden></i>`;
 function bindOptSay(){ app.querySelectorAll(".opt-say").forEach(b=>b.addEventListener("click",e=>{ e.stopPropagation(); say(b.dataset.word,"palabra:"+b.dataset.word); },true)); }
 // Palabra más larga: dos dibujos con distinto número de sílabas
 function actLonger(it,ctx){
-  let a,b; for(let i=0;i<50;i++){ [a,b]=shuffle(WORDS).slice(0,2); if(Math.abs(a.s.length-b.s.length)>=1) break; }
-  const good=a.s.length>b.s.length?a:b; it.key="larga:"+good.w;
+  const short=it.act==="mas-corta";
+  let a,b; for(let i=0;i<80;i++){ a=pickFresh(WORDS,1)[0]; b=pick(WORDS); if(a!==b&&a.s.length!==b.s.length) break; }
+  const good=short?(a.s.length<b.s.length?a:b):(a.s.length>b.s.length?a:b); it.key=(short?"corta:":"larga:")+good.w;
+  const q=short?"¿Cuál tiene menos palmadas?":"¿Cuál tiene más palmadas?";
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
-    prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Cuál tiene más palmadas?</span>`,
+    prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">${q}</span>`,
     options:shuffle([a,b]).map(w=>({html:picOpt(w),ok:w===good})), emo:true, two:true,
-    onSay:()=>say("¿Cuál tiene más palmadas?"), record:recFirst(ctx,it)});
-  bindOptSay();
+    onSay:()=>speak([I(short?"menos":"mas")]), record:recFirst(ctx,it)});
 }
 // Une las sílabas: se oyen separadas y se elige el dibujo
 function actBlend(it,ctx){
@@ -627,6 +750,42 @@ function actBlend(it,ctx){
     options:shuffle([w,...others]).map(x=>({html:pic(x.w,x.e,"emoji in-opt"),ok:x===w})), emo:true,
     onSay:()=>ttsSeq(w.s), record:recFirst(ctx,it)});
 }
+// ¿Suena igual? Dos palabras: ¿empiezan por la misma sílaba?
+function actSameStart(it,ctx){
+  const first=w=>stripAcc(w.s[0]);
+  const a=pickFresh(WORDS.filter(w=>w.s.length>1),1)[0]; const same=Math.random()<.5;
+  let b=same?pick(WORDS.filter(w=>w!==a&&first(w)===first(a))):null;
+  if(!b) b=pick(WORDS.filter(w=>first(w)!==first(a)&&stripAcc(w.w)[0]!==stripAcc(a.w)[0]));
+  const yes=first(a)===first(b); it.key="igual:"+a.w+"/"+b.w;
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
+    prompt:`<span class="pair">${pic(a.w,a.e,"emoji pair-p")}${pic(b.w,b.e,"emoji pair-p")}</span><button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Empiezan igual?</span>`,
+    options:[{html:`<span class="yn">👍</span><b>Sí</b>`,ok:yes},{html:`<span class="yn">👎</span><b>No</b>`,ok:!yes}], two:true,
+    onSay:()=>speak([Wd(a.w),Wd(b.w),I("igual")],350), record:recFirst(ctx,it)});
+}
+// Encadenadas: la palabra que empieza por la sílaba con la que acaba otra
+function actChain(it,ctx){
+  const last=w=>stripAcc(w.s[w.s.length-1]), first=w=>stripAcc(w.s[0]);
+  const bases=WORDS.filter(a=>WORDS.some(b=>b!==a&&first(b)===last(a)));
+  const a=pickFresh(bases,1)[0]; const good=pick(WORDS.filter(b=>b!==a&&first(b)===last(a)));
+  const bad=shuffle(WORDS.filter(b=>b!==a&&first(b)!==last(a)&&stripAcc(b.w)[0]!==last(a)[0])).slice(0,2);
+  it.key="cadena:"+a.w;
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
+    prompt:`${pic(a.w,a.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Qué palabra empieza como termina <b class="snd">${esc(a.w)}</b>?</span>`,
+    options:shuffle([good,...bad]).map(w=>({html:picOpt(w),ok:w===good})), emo:true,
+    onSay:()=>speak([I("cadena"),Wd(a.w)]), record:recFirst(ctx,it)});
+}
+// Añade una sílaba delante: «to» + «pa» → pato
+function actAdd(it,ctx){
+  const w=pickFresh(WORDS.filter(x=>x.s.length>=2&&x.s.length<=3&&x.s.slice(1).join("").length>=2),1)[0];
+  const frag=w.s.slice(1).join(""), syl=w.s[0];
+  const sameEnd=WORDS.filter(x=>x!==w&&stripAcc(x.w).endsWith(stripAcc(frag))&&stripAcc(x.s[0])!==stripAcc(syl));
+  const bad=shuffle(sameEnd).slice(0,1).concat(shuffle(WORDS.filter(x=>x!==w&&!sameEnd.includes(x)&&stripAcc(x.s[0])!==stripAcc(syl)))).slice(0,2);
+  it.key="anade:"+w.w;
+  choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
+    prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Si a <b class="snd">«${esc(frag)}»</b> le pones delante <b class="snd">«${esc(syl)}»</b>, ¿qué palabra sale?</span>`,
+    options:shuffle([w,...bad]).map(x=>({html:picOpt(x),ok:x===w})), emo:true,
+    onSay:()=>speak([I("si-a"),Sy(frag),I("pones"),Sy(syl),I("sale")]), record:recFirst(ctx,it)});
+}
 // Cuenta las palabras de una frase
 function actCountWords(it,ctx){
   const t=it.phrase.t, n=t.replace(/[.,]/g,"").split(" ").length;
@@ -634,46 +793,46 @@ function actCountWords(it,ctx){
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`${pic(it.phrase.k,it.phrase.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">¿Cuántas palabras tiene la frase?</span>`,
     options:opts.map(k=>({html:clapsHTML(k),ok:k===n})), four:opts.length===4,
-    onSay:()=>ttsSeq(t.replace(/[.,]/g,"").split(" "),250), record:recFirst(ctx,it)});
+    onSay:()=>speak(t.replace(/[.,]/g,"").split(" ").map(x=>({t:x})),250), record:recFirst(ctx,it)});
 }
 // ¿Cómo termina? (última sílaba)
 function actEnds(it,ctx){
   let good,bad,target;
-  for(let i=0;i<60;i++){ good=pick(WORDS.filter(w=>w.s.length>1)); target=stripAcc(good.s[good.s.length-1]);
+  for(let i=0;i<60;i++){ good=i<3?pickFresh(WORDS.filter(w=>w.s.length>1),1)[0]:pick(WORDS.filter(w=>w.s.length>1)); target=stripAcc(good.s[good.s.length-1]);
     const cand=WORDS.filter(w=>w!==good&&stripAcc(w.s[w.s.length-1])!==target&&!stripAcc(w.w).endsWith(target));
     if(cand.length>=2){ bad=shuffle(cand).slice(0,2); break; } }
   it.key="termina:"+target;
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Cuál termina en <b class="snd">«${esc(target)}»</b>?</span>`,
     options:shuffle([good,...bad]).map(w=>({html:picOpt(w),ok:w===good})), emo:true,
-    onSay:()=>say(`¿Qué palabra termina en ${target}?`), record:recFirst(ctx,it)});
+    onSay:()=>speak([I("termina"),Sy(target)]), record:recFirst(ctx,it)});
   bindOptSay();
 }
 // La intrusa: tres empiezan igual y una no
 function actOddOne(it,ctx){
   const groups={}; WORDS.forEach(w=>{ const k=stripAcc(w.s[0]); (groups[k]=groups[k]||[]).push(w); });
   const keys=Object.keys(groups).filter(k=>groups[k].length>=3);
-  const k=pick(keys); const three=shuffle(groups[k]).slice(0,3);
+  const k=pickFresh(keys,1,x=>"intrusa:"+x)[0]; const three=shuffle(groups[k]).slice(0,3);
   const odd=pick(WORDS.filter(w=>stripAcc(w.s[0])!==k&&stripAcc(w.w)[0]!==k[0]));
   it.key="intrusa:"+k;
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Tres empiezan igual. ¿Cuál es la diferente?</span>`,
     options:shuffle([...three,odd]).map(w=>({html:picOpt(w),ok:w===odd})), emo:true, four:true,
-    onSay:()=>say("Tres palabras empiezan igual. ¿Cuál es la diferente?"), record:recFirst(ctx,it)});
+    onSay:()=>speak([I("intrusa")]), record:recFirst(ctx,it)});
   bindOptSay();
 }
 // Rimas
 function actRhyme(it,ctx){
   const groups={}; WORDS.forEach(w=>{ const k=rimaKey(w.w); if(k.length>=2) (groups[k]=groups[k]||[]).push(w); });
   const keys=Object.keys(groups).filter(k=>groups[k].length>=2);
-  const k=pick(keys); const [base,good]=shuffle(groups[k]).slice(0,2);
+  const k=pickFresh(keys,1,x=>"rima:"+x)[0]; const [base,good]=shuffle(groups[k]).slice(0,2);
   const end2=x=>stripAcc(x).slice(-2);
   const bad=shuffle(WORDS.filter(w=>rimaKey(w.w)!==k&&end2(w.w)!==end2(base.w))).slice(0,2);
   it.key="rima:"+base.w;
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`${pic(base.w,base.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Qué palabra rima con <b class="snd">${esc(base.w)}</b>?</span>`,
     options:shuffle([good,...bad]).map(w=>({html:picOpt(w),ok:w===good})), emo:true,
-    onSay:()=>say(`¿Qué palabra rima con ${base.w}?`), record:recFirst(ctx,it)});
+    onSay:()=>speak([I("rima"),Wd(base.w)]), record:recFirst(ctx,it)});
   bindOptSay();
 }
 /* Opciones que se escuchan: tocar suena y marca; «Comprobar» responde */
@@ -687,16 +846,17 @@ function oralChoice(ctx,it,{prompt,onSay,options}){
     ${okBar()}
   </div>`);
   bindBack(backToArea);
-  let sel=-1, tries=0, locked=false; const t0=performance.now();
+  let sel=-1, tries=0, locked=false, hinted=false; const t0=performance.now();
   app.querySelector("[data-say]").onclick=onSay; setTimeout(onSay,350);
   const btns=[...app.querySelectorAll(".opt.oral")];
   btns.forEach(b=>b.onclick=()=>{ if(locked) return; sel=+b.dataset.i; btns.forEach(x=>x.classList.toggle("sel",x===b)); tts(options[sel].say); });
   app.querySelector("[data-ok]").onclick=()=>{
-    if(locked) return; if(sel<0){ tts("Toca una de las respuestas"); return; }
+    if(locked) return; if(sel<0){ speak([I("toca")]); return; }
     tries++; const b=btns[sel];
     if(options[sel].ok){ locked=true; b.classList.add("ok"); record(ctx.area,ctx.lvl,it.key,tries,tries===1?100:Math.max(0,100-50*(tries-1)),performance.now()-t0,it.act);
       celebrate(); praise(); setTimeout(()=>ctx.done(tries===1),1400); }
-    else { b.classList.remove("bad","sel"); void b.offsetWidth; b.classList.add("bad"); sel=-1; tryAgain(); }
+    else { b.classList.remove("bad","sel"); void b.offsetWidth; b.classList.add("bad"); sel=-1; tryAgain();
+      if(!hinted && tries>=2 && giveHint(btns,i=>options[i].ok)){ hinted=true; tries++; } }
   };
 }
 // Quita una sílaba (la primera)
@@ -705,7 +865,7 @@ function actDelete(it,ctx){
   const right=s.slice(1).join(""), wrong1=s.slice(0,-1).join(""), wrong2=[s[0],...s.slice(2)].join("");
   const opts=shuffle([{label:right,say:right,ok:true},{label:wrong1,say:wrong1},{label:wrong2,say:wrong2}].filter((o,i,a)=>a.findIndex(x=>x.label===o.label)===i));
   oralChoice(ctx,it,{prompt:`${pic(w.w,w.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Si a <b class="snd">${esc(w.w)}</b> le quitas <b class="snd">«${esc(s[0])}»</b>, ¿qué queda?</span>`,
-    onSay:()=>say(`Si a ${w.w} le quitas ${s[0]}, ¿qué queda?`), options:opts});
+    onSay:()=>speak([I("si-a"),Wd(w.w),I("quitas"),Sy(s[0]),I("queda")]), options:opts});
 }
 // Da la vuelta (palabras de dos sílabas)
 function actReverse(it,ctx){
@@ -713,11 +873,13 @@ function actReverse(it,ctx){
   const right=b+a, wrong1=a+b, wrong2=(b+b!==right&&b+b!==wrong1)?b+b:a+a;
   const opts=shuffle([{label:right,say:right,ok:true},{label:wrong1,say:wrong1},{label:wrong2,say:wrong2}]);
   oralChoice(ctx,it,{prompt:`${pic(w.w,w.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Di <b class="snd">${esc(w.w)}</b> al revés: <b class="snd">${esc(a)}-${esc(b)}</b> → ?</span>`,
-    onSay:()=>{ say(`Di ${w.w} al revés`); }, options:opts});
+    onSay:()=>speak([I("di"),Wd(w.w),I("reves")]), options:opts});
 }
 function randomScene(){
-  const a=pick(SCENE_ACT); const s=pick(SCENE_SUBJ.filter(x=>a.who.includes(x.k))); const o=pick(a.objs);
-  return {s,a,o};
+  let sc;
+  for(let i=0;i<25;i++){ const a=pick(SCENE_ACT); const s=pick(SCENE_SUBJ.filter(x=>a.who.includes(x.k))); const o=pick(a.objs);
+    sc={s,a,o}; if(!RECENT.includes(sceneText(sc))) break; }
+  remember(sceneText(sc)); return sc;
 }
 function sceneText(sc){ return `${sc.s.t} ${sc.a.t} ${sc.o.t}.`; }
 function sceneHTML(sc,cls=""){ return `<span class="scene ${cls}">${pic(sc.s.k,sc.s.e,"emoji sc-s")}<span class="sc-a">${pic(sc.a.k,sc.a.e,"emoji sc-v")}</span>${pic(sc.o.k,sc.o.e,"emoji sc-o")}</span>`; }
@@ -758,7 +920,7 @@ function actBuildScene(it,ctx){
     okBtn.classList.toggle("ready",!slots.includes(null));
   }
   const okBtn=app.querySelector("[data-ok]");
-  okBtn.onclick=()=>{ if(locked) return; if(slots.includes(null)){ tts("Primero pon los tres dibujos"); return; } check(); };
+  okBtn.onclick=()=>{ if(locked) return; if(slots.includes(null)){ speak([I("huecos")]); return; } check(); };
   function check(){
     tries++; const ok=slots.every((s,i)=>s.k===target[i].k);
     if(ok){ locked=true; sEl.classList.add("ok"); record(ctx.area,ctx.lvl,it.key,tries,tries===1?100:Math.max(0,100-34*(tries-1)),performance.now()-t0,it.act);
@@ -838,25 +1000,38 @@ function actTrace(it,ctx){
     speak:()=>say(it.key,(isWord?"palabra:":"silaba:")+it.key),
     onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
 }
+// Copia la palabra: se ve escrita y se escribe en la pauta sin modelo punteado
+function actCopy(it,ctx){
+  traceScreen({text:it.key,title:actName("escritura",ctx.lvl,"copia"),word:it.word,lvl:ctx.lvl,act:"copia",progress:[ctx.idx,ctx.n],
+    blank:true,bigModel:true,speak:()=>speak([I("copia"),Wd(it.key)]),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
+}
+// Completa la palabra: falta una letra y se escribe a mano
+function actComplete(it,ctx){
+  const st=student(); const w=it.word.w; const ch=w[it.idx];
+  const pre=w.slice(0,it.idx), post=w.slice(it.idx+1);
+  const gap=`<span class="gap-word">${pre?txt(st,pre):""}<span class="gap">?</span>${post?txt(st,post):""}</span>`;
+  traceScreen({text:ch,item:w,title:actName("escritura",ctx.lvl,"completa"),word:it.word,lvl:ctx.lvl,act:"completa",progress:[ctx.idx,ctx.n],
+    blank:true,wordHTML:gap,speak:()=>speak([Wd(w),I("completa")]),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
+}
 function traceScreen(o){
   const st=student(); applyLook();
   const tol=TOLERANCE[st.helps.tol]||TOLERANCE.media;
   const font=fontOf(st); const text=font.transform(o.text);
   const escolar=st.cfg.font==="cursiva";
   const ordered=escolar ? ESCOLAR.supports(text) : TRAZOS.supports(text);
-  const showWord=o.word && (st.helps.picto || o.lvl>1);
+  const showWord=o.word && (st.helps.picto || o.lvl>1 || o.blank);
   h(`${topBar(esc(o.title),true)}
   <div class="main trace-main">
     ${o.progress?dots(o.progress[0],o.progress[1]):""}
     <div class="trace-wrap">
       <div class="trace-side">
-        ${showWord?`<div class="side-card word-card">${pic(o.word.w,o.word.e)}<div class="word" style="font-family:${font.css}">${txt(st,o.word.w)}</div></div>`:""}
+        ${showWord?`<div class="side-card word-card ${o.bigModel?"big-model":""}">${pic(o.word.w,o.word.e)}<div class="word" style="font-family:${font.css}">${o.wordHTML||txt(st,o.word.w)}</div></div>`:""}
         <div class="tools">
           <button class="btn primary" data-say>${ICON.speaker}<span>Escuchar</span></button>
-          ${ordered?`<button class="btn" data-demo>${ICON.play}<span>Ver cómo se hace</span></button>`:""}
+          ${ordered&&!o.blank?`<button class="btn" data-demo>${ICON.play}<span>Ver cómo se hace</span></button>`:""}
           <button class="btn" data-clear>${ICON.eraser}<span>Borrar</span></button>
           ${ordered?"":`<button class="btn ok" data-check>${ICON.check}<span>He terminado</span></button>`}
-          <div class="side-card status"><div class="meter"><i data-meter></i></div><div class="hint" data-msg>${ordered?"Empieza en el punto verde y sigue la flecha":"Repasa la letra con el dedo"}</div></div>
+          <div class="side-card status"><div class="meter"><i data-meter></i></div><div class="hint" data-msg>${o.blank?"Empieza en el punto verde":ordered?"Empieza en el punto verde y sigue la flecha":"Repasa la letra con el dedo"}</div></div>
         </div>
       </div>
       <div class="trace-board"><canvas data-guide></canvas><canvas data-demo-c></canvas><canvas data-ink></canvas></div>
@@ -869,7 +1044,7 @@ function traceScreen(o){
   const onProgress=(p,m,warn)=>{ meter.style.width=Math.round(p*100)+"%"; meter.style.background=warn?"var(--warn)":"var(--ok)"; if(m!=null&&m!=="") msg.textContent=m; else if(m==="" && p<1 && !finished) {} };
   const onSuccess=(acc,errors)=>{
     finished=true;
-    record("escritura",o.lvl,o.text,errors+1,acc,performance.now()-t0,o.act);
+    record("escritura",o.lvl,o.item||o.text,errors+1,acc,performance.now()-t0,o.act);
     celebrate(); praise(); msg.textContent="¡Conseguido!";
     const tools=app.querySelector(".tools");
     const nb=document.createElement("button"); nb.className="btn primary next-btn"; nb.innerHTML=`${ICON.next}<span>${o.nextLabel||"Siguiente"}</span>`;
@@ -877,9 +1052,9 @@ function traceScreen(o){
     if(!o.nextLabel) setTimeout(()=>{ if(document.body.contains(nb)) nb.click(); },1800);
   };
   const opts={text,guide:app.querySelector("[data-guide]"),ink:app.querySelector("[data-ink]"),demo:app.querySelector("[data-demo-c]"),
-    tol,colors,onProgress,onSuccess,say:m=>tts(m),still:sens,fontCss:font.css,layout:escolar?ESCOLAR.layout:null};
+    tol,colors,onProgress,onSuccess,say:m=>tts(m),still:sens,fontCss:font.css,layout:escolar?ESCOLAR.layout:null,blank:!!o.blank};
   const eng=ordered?createStrokeEngine(opts):createCoverageEngine(opts);
-  startPending({area:"escritura",lvl:o.lvl,act:o.act,item:o.text,getTries:()=>eng.errors});
+  startPending({area:"escritura",lvl:o.lvl,act:o.act,item:o.item||o.text,getTries:()=>eng.errors});
   app.querySelector("[data-ink]").addEventListener("pointerdown",()=>{ if(S.pending) S.pending.touched=true; });
   bindBack(()=>{ cleanup(); o.onBack(); });
   app.querySelector("[data-say]").onclick=o.speak;
@@ -952,15 +1127,29 @@ function teacherPanel(){
   const tabs=[["grupos","Clases"],["alumnos","Alumnado"],["progreso","Progreso"],["palabras","Palabras"],["audios","Audios"],["copias","Copias"],["ajustes","Ajustes"]];
   if(t.admin) tabs.push(["docentes","Docentes"]);
   h(`<div class="teacher">
-    <div class="top"><h1>Panel docente</h1><div class="who">👩‍🏫 <span class="nm">${esc(t.name)}</span></div><button class="btn small" data-out>Salir</button></div>
+    <div class="top"><h1>Panel docente</h1><div class="who">👩‍🏫 <span class="nm">${esc(t.name)}</span></div><button class="btn small primary" data-proj>${ICON.expand} Proyectar</button><button class="btn small" data-out>Salir</button></div>
     <div class="tabs">${tabs.map(([k,l])=>`<button data-tab="${k}" class="${S.tTab===k?"on":""}">${l}</button>`).join("")}</div>
     <div class="main" style="padding-top:1em">${backupBanner()}<div data-body></div></div></div>`);
   app.querySelector("[data-out]").onclick=()=>{S.teacherId=null;screenGroups(true);};
+  app.querySelector("[data-proj]").onclick=startProjection;
   app.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{S.tTab=b.dataset.tab; S.tStudent=null; teacherPanel();});
   const gb=app.querySelector("[data-gobackup]"); if(gb) gb.onclick=()=>{S.tTab="copias";teacherPanel();};
   const body=app.querySelector("[data-body]");
   ({grupos:tabGroups,alumnos:tabStudents,progreso:tabProgress,palabras:tabWords,audios:tabAudios,copias:tabBackup,ajustes:tabSettings,docentes:tabTeachers})[S.tTab](body);
   if(keep) app.querySelector(".teacher .main").scrollTop=keep;
+}
+
+/* ---- Modo proyección: actividades para toda la clase, sin guardar progreso ---- */
+function startProjection(){
+  const gs=myGroups(); if(!gs.length) return toast("Primero crea una clase");
+  modal(`<h3>Proyectar en la pizarra</h3><p class="muted">Las actividades se hacen con toda la clase. No se guarda el progreso de nadie.</p>
+    <div class="form"><label>Clase (para el nivel y el tipo de letra)<select data-pg>${gs.map(g=>`<option value="${g.id}" ${g.id===S.tGroup?"selected":""}>${esc(g.name)}</option>`).join("")}</select></label></div>
+    <div class="row end"><button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>${ICON.expand} Empezar</button></div>`,(m,close)=>{
+    m.querySelector("[data-x]").onclick=close;
+    m.querySelector("[data-ok]").onclick=()=>{ const g=m.querySelector("[data-pg]").value; close();
+      S.teacherId=null; S.groupId=g; S.studentId=null; S.demo=true; S.demoLevels=null;
+      if(!document.fullscreenElement) toggleFullscreen(); screenStudentHome(); };
+  });
 }
 
 /* ---- Clases ---- */
@@ -1074,6 +1263,8 @@ function studentForm(s){
       <label class="check"><input type="checkbox" data-hg ${hp.grande?"checked":""}> Botones y textos más grandes</label>
       <label class="check"><input type="checkbox" data-hl ${hp.lenta?"checked":""}> Voz más lenta</label>
       <label class="check"><input type="checkbox" data-hp ${hp.picto?"checked":""}> Apoyo con dibujos</label>
+      <label class="check"><input type="checkbox" data-hpi ${hp.pista!==false?"checked":""}> <span><b>Ayuda tras dos fallos</b>: se quitan opciones incorrectas (cuenta como un intento)</span></label>
+      <label>Ejercicios por ronda<select data-hr>${[4,6,8].map(n=>`<option value="${n}" ${+hp.ronda===n?"selected":""}>${n}</option>`).join("")}</select></label>
       <label>Exigencia del trazado<select data-ht>${Object.entries(TOLERANCE).map(([k,v])=>`<option value="${k}" ${hp.tol===k?"selected":""}>${v.label}</option>`).join("")}</select></label>
     </fieldset>
     <fieldset><legend>Letras trabajadas</legend>
@@ -1093,7 +1284,7 @@ function studentForm(s){
       const n=m.querySelector("[data-n]").value.trim(); if(!n) return toast("Escribe el nombre");
       if(!letters.size) return toast("Elige al menos una letra");
       s.name=n; s.avatar=av; s.cfg=readCfg(m);
-      s.helps={grande:m.querySelector("[data-hg]").checked,lenta:m.querySelector("[data-hl]").checked,calma:m.querySelector("[data-hc]").checked,picto:m.querySelector("[data-hp]").checked,tol:m.querySelector("[data-ht]").value};
+      s.helps={grande:m.querySelector("[data-hg]").checked,lenta:m.querySelector("[data-hl]").checked,calma:m.querySelector("[data-hc]").checked,picto:m.querySelector("[data-hp]").checked,tol:m.querySelector("[data-ht]").value,pista:m.querySelector("[data-hpi]").checked,ronda:+m.querySelector("[data-hr]").value};
       s.letters=letters.size===27?null:LETTERS.filter(l=>letters.has(l));
       save(); close(); teacherPanel();
     };
@@ -1177,7 +1368,7 @@ function studentProgress(body,s){
   body.insertAdjacentHTML("beforeend",`<div class="panel">
     <div class="row"><button class="btn small" data-backp>${ICON.back} Clase</button><span style="font-size:2em">${s.avatar}</span><h3 style="margin:0">${esc(s.name)}</h3>
     <span class="chip">Escuchar: ${LEVELS.escucha[lvlOf(s,"escucha")]}</span><span class="chip">Lectura: ${LEVELS.lectura[s.cfg.lectura]}</span><span class="chip">Escritura: ${LEVELS.escritura[s.cfg.escritura]}</span><span class="chip">${FONTS[s.cfg.font].label}</span>
-    <span style="flex:1"></span><button class="btn primary small" data-report>${ICON.print} Informe</button></div>
+    <span style="flex:1"></span><button class="btn small" data-sheet>${ICON.pencil} Ficha de repaso</button><button class="btn primary small" data-report>${ICON.print} Informe</button></div>
     <div class="stats">
       <div><div class="muted">Días de uso</div><b>${sm.days}</b><small class="muted">${sm.fails} ejercicios sin terminar bien</small></div>
       <div><div class="muted">Escuchar · aciertos a la primera</div><b>${sm.escu==null?"—":sm.escu+" %"}</b><small class="muted">${sm.nU} ejercicios</small></div>
@@ -1192,6 +1383,7 @@ function studentProgress(body,s){
   </tbody></table></div>`:`<div class="empty">Sin actividad.</div>`}</div>`);
   body.querySelector("[data-backp]").onclick=()=>{S.tStudent=null;teacherPanel();};
   body.querySelector("[data-report]").onclick=()=>openReport(s);
+  body.querySelector("[data-sheet]").onclick=()=>sheetDialog(s);
 }
 
 /* ---- Informe imprimible ---- */
@@ -1236,6 +1428,73 @@ function openReport(s){
   el.querySelector("[data-close]").onclick=close;
   const ta=el.querySelector("[data-notes]"), np=el.querySelector(".r-notes-print");
   ta.oninput=()=>{ s.notes=ta.value; np.textContent=ta.value; save(); };
+  el.querySelector("[data-print]").onclick=()=>{ try{ window.print(); }catch(e){ toast("Este navegador no permite imprimir desde aquí"); } };
+}
+
+/* ---- Ficha de repaso para imprimir: modelo, dos líneas punteadas y una libre ---- */
+function sheetDialog(s){
+  modal(`<h3>Ficha de repaso de ${esc(s.name)}</h3><div class="form">
+    <label>Qué repasar<select data-sk><option value="palabras">Palabras</option><option value="silabas">Sílabas</option><option value="letras">Letras</option><option value="flojas">Lo que más le cuesta</option></select></label>
+    <label>Cuántas<select data-sn>${[4,6,8].map(n=>`<option ${n===6?"selected":""}>${n}</option>`).join("")}</select></label>
+    <label>Tipo de letra<select data-sf>${Object.entries(FONTS).map(([k,f])=>`<option value="${k}" ${s.cfg.font===k?"selected":""}>${f.label}</option>`).join("")}</select></label>
+    <label class="check"><input type="checkbox" data-sp checked> Con dibujo</label>
+    <p class="muted small-t" style="margin:0">Se eligen al azar entre las letras que trabaja. Puedes generarla otra vez para que salga distinta.</p>
+  </div><div class="row end"><button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>${ICON.print} Crear ficha</button></div>`,(m,close)=>{
+    m.querySelector("[data-x]").onclick=close;
+    m.querySelector("[data-ok]").onclick=()=>{ const o={kind:m.querySelector("[data-sk]").value,n:+m.querySelector("[data-sn]").value,font:m.querySelector("[data-sf]").value,pics:m.querySelector("[data-sp]").checked}; close(); openSheet(s,o); };
+  });
+}
+function sheetItems(s,o){
+  const P=pools(s); const n=o.n;
+  if(o.kind==="letras") return pickFresh(P.letters,n).map(l=>({t:l}));
+  if(o.kind==="silabas") return pickFresh(P.syl,n).map(x=>({t:x}));
+  if(o.kind==="flojas"){
+    const recs=DB.records.filter(r=>r.st===s.id&&r.area==="escritura"&&r.item);
+    const by={}; recs.forEach(r=>{ (by[r.item]=by[r.item]||[]).push(r.acc); });
+    const weak=Object.entries(by).map(([k,v])=>({k,v:v.reduce((a,b)=>a+b,0)/v.length})).sort((a,b)=>a.v-b.v).slice(0,n).map(x=>x.k);
+    const items=weak.map(k=>wordOf(k)?{t:k,w:wordOf(k)}:{t:k});
+    if(items.length<n) items.push(...pickFresh(P.words.filter(w=>w.w.length<=7&&!weak.includes(w.w)),n-items.length).map(w=>({t:w.w,w})));
+    return items;
+  }
+  return pickFresh(P.words.filter(w=>w.w.length<=7),n).map(w=>({t:w.w,w}));
+}
+// Una línea de pauta a lo ancho: el modelo y copias punteadas hasta llenarla (o la pauta vacía)
+function sheetLine(text,font,blank){
+  const VW=1250, H=165;
+  const lines=[[0,"#c9c3d6","4 4"],[50,"#9bbbe8","6 4"],[100,"#4E8FE8",""],[140,"#c9c3d6","4 4"]].map(([y,c,d])=>`<line x1="0" x2="${VW}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="1.6" ${d?`stroke-dasharray="${d}"`:""}/>`).join("");
+  let ink="";
+  if(!blank){
+    const t=FONTS[font].transform(text); const escolar=font==="cursiva";
+    const ok=escolar?ESCOLAR.supports(t):TRAZOS.supports(t);
+    if(ok){
+      const L=escolar?ESCOLAR.layout(t):TRAZOS.layout(t);
+      const d=L.strokes.map(s=>s.pts.length===1?`M${s.pts[0][0]} ${s.pts[0][1]}l.1 0`:"M"+s.pts.map(p=>p[0].toFixed(1)+" "+p[1].toFixed(1)).join("L")).join("");
+      const ww=L.maxX-L.minX, step=ww+Math.max(40,ww*.18); let x=12;
+      for(let i=0;x+ww<=VW-8;i++,x+=step){
+        const tr=`transform="translate(${(x-L.minX).toFixed(1)} 0)"`;
+        ink+=i===0?`<path ${tr} d="${d}" fill="none" stroke="#222" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`
+          :`<path ${tr} d="${d}" fill="none" stroke="#9a93ab" stroke-width="3.2" stroke-dasharray="0.1 7" stroke-linecap="round" stroke-linejoin="round"/>`;
+      }
+    } else ink=`<text x="12" y="100" font-size="100" fill="#222">${esc(t)}</text>`;
+  }
+  return `<svg viewBox="0 -10 ${VW} ${H}" class="sh-svg" preserveAspectRatio="xMinYMid meet" aria-hidden="true">${lines}${ink}</svg>`;
+}
+function openSheet(s,o){
+  const items=sheetItems(s,o); const t=me();
+  const el=document.createElement("div"); el.id="report";
+  el.innerHTML=`<div class="report-bar no-print"><button class="btn" data-close>${ICON.back} Volver</button><button class="btn" data-again>${ICON.again} Otra ficha</button><span style="flex:1"></span><button class="btn primary" data-print>${ICON.print} Imprimir o guardar PDF</button></div>
+  <article class="report sheet">
+    <header><div><h1>Ficha de repaso</h1><div class="muted">${new Date().toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"})}</div></div><div class="r-name">Nombre: ${esc(s.name)}</div></header>
+    ${items.map(it=>`<div class="sh-row">
+      ${o.pics&&it.w?`<div class="sh-pic">${pic(it.w.w,it.w.e,"emoji")}</div>`:`<div class="sh-pic"></div>`}
+      <div class="sh-lines">${sheetLine(it.t,o.font)}${sheetLine(it.t,o.font,true)}</div>
+    </div>`).join("")}
+    <footer><span>Docente: ${esc(t?t.name:"")}</span><span>Lectoescritura</span></footer>
+  </article>`;
+  document.body.appendChild(el); document.body.classList.add("reporting");
+  const close=()=>{ el.remove(); document.body.classList.remove("reporting"); };
+  el.querySelector("[data-close]").onclick=close;
+  el.querySelector("[data-again]").onclick=()=>{ close(); openSheet(s,o); };
   el.querySelector("[data-print]").onclick=()=>{ try{ window.print(); }catch(e){ toast("Este navegador no permite imprimir desde aquí"); } };
 }
 
@@ -1317,6 +1576,7 @@ function tabAudios(body){
     silabas:{label:"Sílabas",items:SYLLABLES.map(x=>({k:"silaba:"+x,txt:x,tts:x}))},
     palabras:{label:"Palabras",items:WORDS.map(w=>({k:"palabra:"+w.w,txt:w.w,tts:w.w}))},
     frases:{label:"Frases",items:PHRASES.map(p=>({k:"frase:"+p.t,txt:p.t,tts:p.t}))},
+    enunciados:{label:"Enunciados",items:Object.entries(INSTR).map(([k,v])=>({k:"ins:"+k,txt:v,tts:v.replace(/…/g,"").trim(),hint:v.includes("…")?"Graba solo este trozo: la palabra o sílaba la pone la app":""}))},
     animos:{label:"Ánimos y avisos",items:[{k:"animo:1",txt:"Ánimo 1",tts:"¡Muy bien!",hint:"Ej.: «¡Muy bien!»"},{k:"animo:2",txt:"Ánimo 2",tts:"¡Genial!",hint:"Ej.: «¡Genial!»"},{k:"animo:3",txt:"Ánimo 3",tts:"¡Eso es!",hint:"Ej.: «¡Eso es!»"},{k:"aviso:otra",txt:"Prueba otra vez",tts:"Prueba otra vez"}]}
   };
   S.aCat=S.aCat||"letras"; const cat=cats[S.aCat];

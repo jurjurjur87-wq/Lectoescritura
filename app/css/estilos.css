@@ -526,3 +526,40 @@ body.sensible .act-tile.rec{outline:2px solid #8a94a6}
 .okbar .btn{min-width:11em}
 .slots~.tiles~.okbar .btn:not(.ready),.scene-tiles~.okbar .btn:not(.ready){opacity:.55}
 .opt.picked{outline:5px solid var(--primary);outline-offset:-5px}
+
+/* Ayuda tras dos fallos */
+.opt.off{opacity:.18;filter:grayscale(1);pointer-events:none;transform:scale(.95)}
+/* Sí / No, Verdad / Mentira */
+.opt .yn{display:block;font-size:1.2em;line-height:1.1}
+.opt .yn + b{display:block;font-size:.55em}
+.prompt .pair{display:flex;gap:.6em}
+.prompt .pair-p{font-size:4.5em}
+.prompt img.pair-p{width:6em;height:6em}
+/* La tarjeta equivocada */
+.opt.picword{display:flex;flex-direction:column;justify-content:center;gap:.2em}
+.opt .card-w{font-size:2.1em;font-weight:700;color:var(--text)}
+/* Une palabra y dibujo */
+.match{display:grid;grid-template-columns:1fr 1fr;gap:2.5em;max-width:46em;margin:0 auto;width:100%}
+.m-col{display:flex;flex-direction:column;gap:.8em}
+.m-item{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);height:6.2rem;display:grid;place-items:center;border:5px solid transparent;position:relative}
+.m-word{font-size:2rem;font-weight:700}
+.m-pic .in-opt{font-size:3.4rem}
+.m-pic img.in-opt{width:5rem;height:5rem}
+.m-item.picked{border-color:var(--primary);transform:scale(1.03)}
+.m-item.paired{border-color:var(--pc);background:color-mix(in srgb,var(--pc) 10%,var(--card))}
+.m-item.paired::after{content:"";position:absolute;top:.4em;right:.4em;width:.9em;height:.9em;border-radius:50%;background:var(--pc)}
+.m-item.bad{border-color:var(--bad);animation:shake .4s}
+.match.ok .m-item{border-color:var(--ok);background:var(--ok-soft)}
+/* Completa / copia */
+.gap-word{display:inline-flex;align-items:flex-end;gap:.05em}
+.gap{display:inline-grid;place-items:center;min-width:1.2em;height:1.3em;border:3px dashed var(--primary);border-radius:.3em;color:var(--primary);font-family:var(--font-ui,inherit);margin:0 .1em}
+.word-card.big-model .word{font-size:2.4em}
+@media (max-width:600px){.match{gap:1em}.m-word{font-size:1.4rem}.m-item{height:5rem}}
+
+/* Ficha de repaso */
+.sheet .sh-row{display:flex;gap:.6cm;align-items:center;padding:.25cm 0;border-bottom:1px solid #eee;break-inside:avoid}
+.sheet .sh-pic{width:2.2cm;text-align:center;flex:none}
+.sheet .sh-pic .emoji{font-size:1.5cm}
+.sheet .sh-pic img{width:2cm;height:2cm}
+.sheet .sh-lines{display:flex;flex-direction:column;gap:.15cm;flex:1;min-width:0}
+.sheet .sh-svg{width:100%;height:auto;display:block}

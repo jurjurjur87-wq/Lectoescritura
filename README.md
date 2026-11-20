@@ -17,25 +17,25 @@ Pensada para Infantil, Primaria y alumnado con necesidades específicas: cada al
 ### Para el alumnado
 El alumno entra sin saber leer: toca su clase y después su animal. Tiene tres áreas. Al entrar en cada una aparece **todo el catálogo de actividades**, cada una con su nombre y una pestaña con su nivel (sílabas, sonidos, palabras…). Las del nivel del alumno salen marcadas con una estrella, pero puede abrir cualquiera.
 
-En los juegos con dibujos que se escuchan, tocar un dibujo lo marca y lo dice en voz alta; la respuesta se da con **Comprobar**.
+En todos los juegos, tocar una opción solo la marca (si es un dibujo, además lo dice en voz alta); la respuesta se da con **Comprobar**, así no se responde por error. Tras dos fallos, la app quita opciones incorrectas como ayuda (cuenta como un intento). El número de ejercicios por ronda (4, 6 u 8) se elige para cada alumno.
 
 **Escuchar** (conciencia fonológica y comprensión oral)
-1. **Sílabas**: ¿cuántas palmadas?, la palabra más larga, une las sílabas, cuenta las palabras de una frase.
-2. **Sonidos**: ¿dónde suena «ma»?, ¿cómo empieza?, ¿cómo termina?, la intrusa.
+1. **Sílabas**: ¿cuántas palmadas?, la palabra más larga, ¿cuál es más corta?, une las sílabas, cuenta las palabras de una frase.
+2. **Sonidos**: ¿dónde suena «ma»?, ¿cómo empieza?, ¿cómo termina?, la intrusa, ¿suena igual?
 3. **Comprensión**: escucha una frase y elige la escena.
 4. **Escenas**: escucha y monta la escena con dibujos.
-5. **Juegos de sonidos**: rimas, quita una sílaba, da la vuelta.
+5. **Juegos de sonidos**: rimas, quita una sílaba, añade una sílaba, da la vuelta, encadenadas.
 
 **Leer**
 1. **Letras**: escucha y toca la letra.
 2. **Sílabas**: escucha y toca la sílaba; completa la sílaba que falta.
-3. **Palabras**: elige la palabra del dibujo; forma la palabra con sílabas; completa la letra que falta.
-4. **Frases**: lee y toca el dibujo; ordena la frase; **las tijeras** (separa las palabras de una frase).
+3. **Palabras**: elige la palabra del dibujo; forma la palabra con sílabas; completa la letra que falta; une palabra y dibujo; la tarjeta equivocada.
+4. **Frases**: lee y toca el dibujo; ordena la frase; **las tijeras** (separa las palabras de una frase); ¿verdad o mentira? (más de 440 frases).
 
 **Escribir**
 1. **Letras**: abecedario con estrellas y trazado letra a letra.
 2. **Sílabas**: trazado y dictado con letras móviles.
-3. **Palabras**: trazado y dictado con letras móviles.
+3. **Palabras**: trazado, dictado con letras móviles, **copia la palabra** (en la pauta, sin modelo punteado) y **completa la palabra** (escribe a mano la letra que falta).
 
 ### Trazado trazo a trazo
 - En **imprenta**, **mayúsculas** y **letra escolar enlazada**, cada letra tiene su punto de inicio, flecha de dirección, número de trazo y **modelo animado** («Ver cómo se hace»).
@@ -43,10 +43,10 @@ En los juegos con dibujos que se escuchan, tocar un dibujo lo marca y lo dice en
 - La **letra escolar** (solo minúsculas, con rabito de entrada) se usa en toda la app: tarjetas, opciones, palabras y frases, que van enteras en minúscula. Las palabras se escriben enlazadas, y los puntos, tildes y rayas se hacen al final.
 
 ### Contenidos
-- Banco de **casi 400 palabras** con sílabas y dibujo, **unas 185 frases** y **más de 750 escenas**. Las actividades se generan al azar y la app evita repetir lo que ha salido hace poco.
+- Banco de **casi 400 palabras** con sílabas y dibujo, **unas 185 frases** y **más de 750 escenas**. Las actividades se generan al azar y la app recuerda lo que ha salido (también entre sesiones) para no repetirlo enseguida.
 - **Palabras y frases propias** del docente (nombres del alumnado, vocabulario del tema…), con separación en sílabas automática y foto opcional.
 - **Pictogramas de ARASAAC**: se descargan una vez y se usan solos en todas las actividades. Si falta alguno, se usa el emoji. Cada dibujo se puede cambiar eligiendo otro pictograma o una foto propia.
-- **Audios grabados por el docente** para letras, sílabas, palabras, frases y ánimos. Si no hay grabación, se usa la voz del equipo.
+- **Audios grabados por el docente** para letras, sílabas, palabras, frases, ánimos y **enunciados** (se graban por trozos, por ejemplo «¿Qué palabra empieza por…», y la app añade la sílaba o palabra). Si no hay grabación, se usa la voz del equipo.
 
 ### Estilo visual y ayudas
 - Tres aspectos: **Plus** (más colorido, por defecto), **Básico** y **Sensible** (sobrio: colores apagados, sin adornos ni animaciones).
@@ -58,7 +58,9 @@ En los juegos con dibujos que se escuchan, tocar un dibujo lo marca y lo dice en
 - Clases compartidas entre docentes (tutora + PT + AL). Alta rápida pegando una lista de nombres.
 - **Progreso**: resumen de la clase, evolución semanal por áreas, mapa por letras y lo que más le cuesta a cada alumno. Cada aviso cuenta como intento, y un ejercicio que no se termina bien cuenta como fallo.
 - **Informe imprimible** por alumno (o en PDF), con observaciones.
-- **Bloqueo del aula**: clase fija en el equipo; cambiar de clase y el modo demostración piden PIN.
+- **Ficha de repaso** para imprimir: letras, sílabas, palabras o lo que más le cuesta, con la letra del alumno (también escolar), modelo, copias punteadas y pauta libre.
+- **Modo proyección** («Proyectar» en el panel o «Toda la clase»): actividades a pantalla completa para el grupo, sin guardar el progreso de nadie.
+- **Bloqueo del aula**: clase fija en el equipo; cambiar de clase y el modo proyección piden PIN.
 - **Copias de seguridad** en archivo (con o sin audios), con recordatorio cada 14 días.
 
 Los datos se guardan **solo en el dispositivo** donde se usa la app (en el navegador). No se envía nada a internet. La app pide al navegador que no borre sus datos.
