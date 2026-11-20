@@ -14,6 +14,10 @@ function loadDB(){
 let DB = loadDB();
 DB.custom = Object.assign({words:[],phrases:[]}, DB.custom||{});
 const lvlOf = (st,area)=> (st.cfg&&st.cfg[area]) || 1;
+// Un alumno tiene su clase principal (group) y puede estar también en otras (extra), por ejemplo en PT.
+// Es el mismo alumno: comparte niveles, ayudas y progreso en todas sus clases.
+const inGroup=(s,gid)=>s.group===gid||(s.extra||[]).includes(gid);
+const classesOf=s=>[s.group,...(s.extra||[])].map(id=>byId(DB.groups,id)).filter(Boolean);
 /* Palabras y frases propias del docente: se añaden a las listas comunes */
 function applyCustom(){
   for(let i=WORDS.length-1;i>=0;i--) if(WORDS[i].c) WORDS.splice(i,1);
@@ -36,6 +40,8 @@ async function initRecords(){
       rows.push(...add);
     }
     rows.sort((a,b)=>a.t-b.t);
+    const home={}; DB.students.forEach(st=>home[st.id]=st.group); const fix=rows.filter(r=>!r.g&&home[r.st]);
+    if(fix.length){ fix.forEach(r=>r.g=home[r.st]); await IDB.putMany("records",fix.map(r=>[r.id,r])); }
     DB.records=rows; REC.persisted=new Set(rows.map(r=>r.id)); REC.ok=true;
     save();                                               // localStorage queda solo con lo ligero
   }catch(e){ REC.ok=false; }
@@ -97,14 +103,14 @@ function flushPending(){
   if(!(tries>0||p.touched)) return;
   const item=p.ref?p.ref.key:p.item; if(!item) return;
   // el abandono cuenta como un intento más, además de los avisos recibidos
-  DB.records.push({id:uid(),st:S.studentId,t:Date.now(),area:p.area,lvl:p.lvl,act:p.act,item,tries:tries+1,acc:0,ms:Math.round(performance.now()-p.t0),fail:true});
+  DB.records.push({id:uid(),st:S.studentId,g:S.groupId,t:Date.now(),area:p.area,lvl:p.lvl,act:p.act,item,tries:tries+1,acc:0,ms:Math.round(performance.now()-p.t0),fail:true});
   save();
 }
 window.addEventListener("pagehide",flushPending);
 function record(area,lvl,item,tries,acc,ms,act){
   S.pending=null;
   if(S.demo) return;
-  DB.records.push({id:uid(),st:S.studentId,t:Date.now(),area,lvl,act,item,tries,acc:Math.round(acc),ms:Math.round(ms)});
+  DB.records.push({id:uid(),st:S.studentId,g:S.groupId,t:Date.now(),area,lvl,act,item,tries,acc:Math.round(acc),ms:Math.round(ms)});
   save();
 }
 
@@ -324,7 +330,7 @@ function screenGroups(force){
     ${groups.length?`<div class="grid">${groups.map(g=>`
       <button class="tile group-tile" data-g="${g.id}" style="--gc:${g.color}">
         <span class="big deco">${g.icon||"🏫"}</span><span>${esc(g.name)}</span>
-        <small>${DB.students.filter(s=>s.group===g.id).length} alumnos</small>
+        <small>${DB.students.filter(s=>inGroup(s,g.id)).length} alumnos</small>
       </button>`).join("")}</div>`
     :`<div class="empty start-box"><p style="font-size:1.3em">Todavía no hay clases.</p>
       ${DB.teachers.length?`<button class="btn primary big-btn" data-start>👩‍🏫 Entrar como docente y crear la primera clase</button>`
@@ -341,7 +347,7 @@ function screenStudents(){
   const g=byId(DB.groups,S.groupId); if(!g) return screenGroups(true);
   S.studentId=null; S.demo=false; applyLook();
   const locked=DB.settings.lock && DB.settings.fixedGroup===g.id;
-  const sts=DB.students.filter(s=>s.group===g.id).sort((a,b)=>a.name.localeCompare(b.name,"es"));
+  const sts=DB.students.filter(s=>inGroup(s,g.id)).sort((a,b)=>a.name.localeCompare(b.name,"es"));
   h(`${topBar(esc(g.name),!locked,locked?`<button class="iconbtn" data-teacher aria-label="Docentes">${ICON.lock}</button>`:"")}
   <div class="main">
     <div class="hero"><h2>¿Quién eres?</h2></div>
@@ -1198,6 +1204,9 @@ function teacherSetup(){
   });
 }
 function me(){ return byId(DB.teachers,S.teacherId); }
+// El progreso hecho en una clase solo lo ve quien da clase en ella (o la administración)
+function visibleRecs(s){ const t=me(); const ok=t&&t.admin?null:new Set(myGroups().map(g=>g.id));
+  return DB.records.filter(r=>r.st===s.id&&(!ok||ok.has(r.g||s.group))); }
 function myGroups(){ const t=me(); return DB.groups.filter(g=>t.admin||(g.teachers||[]).includes(t.id)); }
 const DAY=864e5;
 function backupBanner(){
@@ -1211,7 +1220,7 @@ function backupBanner(){
 function firstSteps(){
   if(DB.settings.stepsHidden) return "";
   const gs=myGroups(); const gids=new Set(gs.map(g=>g.id));
-  const hasSt=DB.students.some(s=>gids.has(s.group)); const tried=DB.records.length>0||DB.settings.tried;
+  const hasSt=DB.students.some(s=>classesOf(s).some(g=>gids.has(g.id))); const tried=DB.records.length>0||DB.settings.tried;
   if(gs.length&&hasSt&&tried) return "";
   const step=(n,done,label,k,enabled)=>`<li class="${done?"done":""}"><span class="st-n">${done?"✓":n}</span><span class="grow">${label}</span>${done?"":`<button class="btn small ${enabled?"primary":""}" data-step="${k}" ${enabled?"":"disabled"}>${n===1?"Crear clase":n===2?"Añadir alumnos":"Probar"}</button>`}</li>`;
   return `<div class="panel steps"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Primeros pasos</h3><button class="btn small" data-step="ocultar">Ocultar</button></div>
@@ -1238,7 +1247,7 @@ function teacherPanel(){
   app.querySelectorAll("[data-step]").forEach(b=>b.onclick=()=>{ const k=b.dataset.step;
     if(k==="clase"){ S.tTab="grupos"; teacherPanel(); groupForm(null); }
     else if(k==="alumnos"){ const g=myGroups()[0]; S.tGroup=g.id; S.tTab="alumnos"; teacherPanel(); bulkAdd(g); }
-    else if(k==="probar"){ const g=myGroups().find(x=>DB.students.some(st=>st.group===x.id))||myGroups()[0]; S.teacherId=null; S.groupId=g.id; screenStudents(); }
+    else if(k==="probar"){ const g=myGroups().find(x=>DB.students.some(st=>inGroup(st,x.id)))||myGroups()[0]; S.teacherId=null; S.groupId=g.id; screenStudents(); }
     else if(k==="ocultar"){ DB.settings.stepsHidden=true; save(); teacherPanel(); } });
   const gb=app.querySelector("[data-gobackup]"); if(gb) gb.onclick=()=>{S.tTab="copias";teacherPanel();};
   const body=app.querySelector("[data-body]");
@@ -1273,7 +1282,7 @@ const readCfg=m=>({lectura:+m.querySelector("[data-cl]").value,escritura:+m.quer
 function tabGroups(body){
   const gs=myGroups();
   body.innerHTML=`<div class="panel"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Mis clases</h3><button class="btn primary" data-new>Nueva clase</button></div></div>
-  ${gs.length?gs.map(g=>{const n=DB.students.filter(s=>s.group===g.id).length;
+  ${gs.length?gs.map(g=>{const n=DB.students.filter(s=>inGroup(s,g.id)).length;
     const tn=(g.teachers||[]).map(id=>byId(DB.teachers,id)).filter(Boolean).map(x=>`<span class="chip">${esc(x.name)}</span>`).join("");
     return `<div class="panel"><div class="list-item"><span class="av gicon" style="--gc:${g.color}">${g.icon||"🏫"}</span>
     <div class="grow"><b>${esc(g.name)}</b>${DB.settings.lock&&DB.settings.fixedGroup===g.id?` <span class="chip">Clase fija en este equipo</span>`:""}<div class="muted small-t">${n} alumnos · Empieza en: Escuchar ${LEVELS.escucha[g.defaults.escucha||1]} · Leer ${LEVELS.lectura[g.defaults.lectura]} · Escribir ${LEVELS.escritura[g.defaults.escritura]} · ${FONTS[g.defaults.font].label}</div><div>${tn}</div></div>
@@ -1311,8 +1320,10 @@ function groupForm(g){
       if(isNew){ S.tGroup=g.id; S.tTab="alumnos"; teacherPanel(); toast("Clase creada. Ahora añade al alumnado"); bulkAdd(g); } else teacherPanel(); };
     const ap=m.querySelector("[data-apply]"); if(ap) ap.onclick=()=>{ if(!collect())return;
       confirmBox("¿Aplicar estos niveles y tipo de letra a todo el alumnado de la clase?","Aplicar",()=>{
-        DB.students.filter(s=>s.group===g.id).forEach(s=>s.cfg=Object.assign({},g.defaults)); save(); close(); toast("Aplicado"); teacherPanel(); }); };
-    const del=m.querySelector("[data-del]"); if(del) del.onclick=()=>confirmBox(`¿Eliminar la clase «${g.name}» con todo su alumnado y progreso?`,"Eliminar",()=>{
+        DB.students.filter(s=>inGroup(s,g.id)).forEach(s=>s.cfg=Object.assign({},g.defaults)); save(); close(); toast("Aplicado"); teacherPanel(); }); };
+    const del=m.querySelector("[data-del]"); if(del) del.onclick=()=>confirmBox(`¿Eliminar la clase «${g.name}»? El alumnado que solo está en esta clase se borra con su progreso; quien esté también en otra clase se queda en ella.`,"Eliminar",()=>{
+      DB.students.forEach(s=>{ if(s.extra&&s.extra.includes(g.id)) s.extra=s.extra.filter(x=>x!==g.id);
+        if(s.group===g.id&&s.extra&&s.extra.length){ s.group=s.extra.shift(); } });   // si está en otra clase, se queda allí
       const ids=new Set(DB.students.filter(s=>s.group===g.id).map(s=>s.id));
       DB.records=DB.records.filter(r=>!ids.has(r.st)); DB.students=DB.students.filter(s=>s.group!==g.id);
       DB.groups=DB.groups.filter(x=>x.id!==g.id); if(DB.settings.fixedGroup===g.id) DB.settings.fixedGroup=null; save(); close(); teacherPanel(); });
@@ -1333,18 +1344,63 @@ function helpChips(hp){
   return c.length?c.map(x=>`<span class="chip">${x}</span>`).join(""):`<span class="muted">—</span>`;
 }
 function tabStudents(body){
-  body.innerHTML=groupSelect(`<span style="flex:1"></span><button class="btn" data-all>Cambiar a toda la clase</button><button class="btn primary" data-add>Añadir alumnado</button>`);
+  body.innerHTML=groupSelect(`<span style="flex:1"></span><button class="btn" data-all>Cambiar a toda la clase</button><button class="btn" data-from>${ICON.copy||"⧉"} Añadir desde otra clase</button><button class="btn primary" data-add>＋ Nuevo alumno</button>`);
   bindGroupSelect(body); if(!myGroups().length) return;
   const g=byId(DB.groups,S.tGroup);
-  const sts=DB.students.filter(s=>s.group===g.id).sort((a,b)=>a.name.localeCompare(b.name,"es"));
-  body.insertAdjacentHTML("beforeend",`<div class="panel">${sts.length?`<div class="tw"><table><thead><tr><th></th><th>Nombre</th><th>Escuchar</th><th>Leer</th><th>Escribir</th><th>Letra</th><th>Ayudas</th><th>Letras trabajadas</th><th></th></tr></thead><tbody>
-    ${sts.map(s=>`<tr class="click" data-s="${s.id}"><td style="font-size:1.6em">${s.avatar}</td><td><b>${esc(s.name)}</b></td>
-    <td>${LEVELS.escucha[lvlOf(s,"escucha")]}</td><td>${LEVELS.lectura[s.cfg.lectura]}</td><td>${LEVELS.escritura[s.cfg.escritura]}</td><td>${FONTS[s.cfg.font].label}</td>
-    <td>${helpChips(s.helps)}</td><td>${s.letters&&s.letters.length<27?`<span class="chip">${s.letters.length} de 27</span>`:"Todo el abecedario"}</td><td><button class="btn small">${ICON.pencil} Editar</button></td></tr>`).join("")}
+  const sts=DB.students.filter(s=>inGroup(s,g.id)).sort((a,b)=>a.name.localeCompare(b.name,"es"));
+  body.insertAdjacentHTML("beforeend",`<div class="panel">${sts.length?`<div class="tw"><table class="st-table"><thead><tr><th></th><th>Nombre</th><th>Escuchar</th><th>Leer</th><th>Escribir</th><th>Letra</th><th>Ayudas</th><th>Letras trabajadas</th><th></th></tr></thead><tbody>
+    ${sts.map(s=>{ const others=classesOf(s).filter(x=>x.id!==g.id); return `<tr class="click" data-s="${s.id}"><td style="font-size:1.6em">${s.avatar}</td><td><b>${esc(s.name)}</b>${others.length?`<div class="small-t muted">También en: ${others.map(x=>esc(x.name)).join(", ")}</div>`:""}</td>
+    <td data-lab="Escuchar">${LEVELS.escucha[lvlOf(s,"escucha")]}</td><td data-lab="Leer">${LEVELS.lectura[s.cfg.lectura]}</td><td data-lab="Escribir">${LEVELS.escritura[s.cfg.escritura]}</td><td data-lab="Letra">${FONTS[s.cfg.font].label}</td>
+    <td data-lab="Ayudas">${helpChips(s.helps)}</td><td data-lab="Letras">${s.letters&&s.letters.length<27?`<span class="chip">${s.letters.length} de 27</span>`:"Todo el abecedario"}</td><td class="row-acts"><button class="btn small">${ICON.pencil} Editar</button><button class="btn small" data-move="${s.id}">⇄ Clases</button></td></tr>`; }).join("")}
   </tbody></table></div>`:`<div class="empty">No hay alumnado en esta clase.</div>`}</div>`);
   body.querySelector("[data-add]").onclick=()=>bulkAdd(g);
   body.querySelector("[data-all]").onclick=()=>sts.length?classChange(g,sts):toast("Primero añade alumnado");
   body.querySelectorAll("[data-s]").forEach(r=>r.onclick=()=>studentForm(byId(DB.students,r.dataset.s)));
+  body.querySelectorAll("[data-move]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); moveStudent(byId(DB.students,b.dataset.move),g); });
+  body.querySelector("[data-from]").onclick=()=>addFromOther(g);
+}
+// Mover, añadir a otra clase o quitar de esta clase a un alumno
+function moveStudent(s,g){
+  const others=DB.groups.filter(x=>!inGroup(s,x.id));
+  const multi=classesOf(s).length>1;
+  const sel=`<select data-tg class="sel">${others.map(x=>`<option value="${x.id}">${esc(x.icon||"🏫")} ${esc(x.name)}</option>`).join("")}</select>`;
+  modal(`<h3>${s.avatar} ${esc(s.name)}: clases</h3>
+    <p class="muted" style="margin-top:0">Está en: <b>${classesOf(s).map(x=>esc(x.name)).join(", ")}</b>. Es el mismo alumno en todas sus clases (mismos niveles y ayudas). Cada docente solo ve el progreso hecho en sus clases.</p>
+    ${others.length?`<div class="form"><label>Otra clase${sel}</label></div>
+    <div class="move-opts">
+      <button class="btn primary" data-dup>＋ Añadir también a esa clase<small>Seguirá en «${esc(g.name)}» y aparecerá en las dos (por ejemplo, su clase y PT)</small></button>
+      <button class="btn" data-mv>➜ Trasladar a esa clase<small>Deja «${esc(g.name)}» y pasa a la otra; lo que hizo en «${esc(g.name)}» se va con él</small></button>
+    </div>`:`<p class="muted">No hay otras clases a las que añadirlo.</p>`}
+    ${multi?`<div class="move-opts"><button class="btn" data-rm>✕ Quitar de «${esc(g.name)}»<small>Sigue en sus otras clases; no se borra nada</small></button></div>`:""}
+    <div class="row end"><button class="btn" data-x>Cerrar</button></div>`,(m,close)=>{
+    m.querySelector("[data-x]").onclick=close;
+    const target=()=>m.querySelector("[data-tg]").value;
+    const dup=m.querySelector("[data-dup]"); if(dup) dup.onclick=()=>{ const t=target(); s.extra=[...new Set([...(s.extra||[]),t])]; save(); close(); toast(`${s.name} está ahora también en «${byId(DB.groups,t).name}»`); teacherPanel(); };
+    const mv=m.querySelector("[data-mv]"); if(mv) mv.onclick=()=>{ const t=target();
+      DB.records.forEach(r=>{ if(r.st===s.id&&(r.g||s.group)===g.id) r.g=t; }); if(REC.ok) IDB.replaceAll("records",DB.records.map(r=>[r.id,r])).catch(()=>{});
+      if(s.group===g.id) s.group=t; else s.extra=(s.extra||[]).map(x=>x===g.id?t:x);
+      s.extra=[...new Set((s.extra||[]).filter(x=>x!==s.group))]; save(); close(); toast(`${s.name} se ha trasladado a «${byId(DB.groups,t).name}»`); teacherPanel(); };
+    const rm=m.querySelector("[data-rm]"); if(rm) rm.onclick=()=>{
+      if(s.group===g.id){ s.group=s.extra[0]; s.extra=s.extra.slice(1); } else s.extra=s.extra.filter(x=>x!==g.id);
+      save(); close(); toast(`${s.name} ya no está en «${g.name}»`); teacherPanel(); };
+  });
+}
+// Añadir a esta clase alumnos de otras clases: solo se añaden (siguen en su clase), no se quitan de la suya
+function addFromOther(g){
+  const groups=DB.groups.filter(x=>x.id!==g.id).map(x=>({g:x,sts:DB.students.filter(s=>inGroup(s,x.id)&&!inGroup(s,g.id)).sort((a,b)=>a.name.localeCompare(b.name,"es"))})).filter(x=>x.sts.length);
+  if(!groups.length) return toast("No hay alumnado en otras clases para añadir");
+  const picked=new Set();
+  modal(`<h3>Añadir a «${esc(g.name)}» desde otras clases</h3>
+    <p class="muted" style="margin-top:0">El alumno sigue en su clase y aparece también en esta. Lo que haga aquí solo lo verán los docentes de esta clase, y lo de su otra clase no se ve aquí. Para cambiarlo de clase usa «⇄ Clases» en su clase.</p>
+    <div class="from-list">${groups.map(x=>`<div class="from-g"><b>${esc(x.g.icon||"🏫")} ${esc(x.g.name)}</b><div class="from-sts">${x.sts.map(s=>`<button class="from-st" data-p="${s.id}"><span>${s.avatar}</span>${esc(s.name)}</button>`).join("")}</div></div>`).join("")}</div>
+    <div class="row end"><button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Añadir</button></div>`,(m,close)=>{
+    m.querySelector("[data-x]").onclick=close;
+    m.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{ const id=b.dataset.p; picked.has(id)?picked.delete(id):picked.add(id);
+      m.querySelectorAll(`[data-p="${id}"]`).forEach(x=>x.classList.toggle("on",picked.has(id))); m.querySelector("[data-ok]").textContent=picked.size?`Añadir (${picked.size})`:"Añadir"; });
+    m.querySelector("[data-ok]").onclick=()=>{ if(!picked.size) return toast("Toca los alumnos que quieres añadir");
+      picked.forEach(id=>{ const s=byId(DB.students,id); s.extra=[...new Set([...(s.extra||[]),g.id])]; });
+      save(); close(); toast(picked.size===1?"1 alumno añadido a la clase":`${picked.size} alumnos añadidos a la clase`); teacherPanel(); };
+  });
 }
 // Cambiar algo a todo el alumnado de una clase a la vez
 function classChange(g,sts){
@@ -1377,7 +1433,7 @@ function bulkAdd(g){
     m.querySelector("[data-ok]").onclick=()=>{
       const names=m.querySelector("[data-names]").value.split(/\n|,/).map(s=>s.trim()).filter(Boolean);
       if(!names.length) return toast("Escribe al menos un nombre");
-      const used=new Set(DB.students.filter(s=>s.group===g.id).map(s=>s.avatar));
+      const used=new Set(DB.students.filter(s=>inGroup(s,g.id)).map(s=>s.avatar));
       const free=shuffle(AVATARS.filter(a=>!used.has(a)));
       names.forEach((n,i)=>DB.students.push({id:uid(),group:g.id,name:n,avatar:free[i]||pick(AVATARS),cfg:Object.assign({},g.defaults),helps:defaultHelps(),letters:null,notes:""}));
       save(); close(); toast(names.length===1?"1 alumno añadido":`${names.length} alumnos añadidos`); teacherPanel();
@@ -1421,7 +1477,7 @@ function studentForm(s){
       s.letters=letters.size===27?null:LETTERS.filter(l=>letters.has(l));
       save(); close(); teacherPanel();
     };
-    m.querySelector("[data-del]").onclick=()=>confirmBox(`¿Eliminar a ${s.name} y todo su progreso?`,"Eliminar",()=>{
+    m.querySelector("[data-del]").onclick=()=>confirmBox(classesOf(s).length>1?`${s.name} está en ${classesOf(s).length} clases. ¿Eliminarlo de todas con todo su progreso? (Para quitarlo solo de una clase, usa «⇄ Clases»)`:`¿Eliminar a ${s.name} y todo su progreso?`,"Eliminar",()=>{
       DB.students=DB.students.filter(x=>x.id!==s.id); DB.records=DB.records.filter(r=>r.st!==s.id); save(); close(); teacherPanel(); });
   });
 }
@@ -1454,10 +1510,10 @@ function tabProgress(body){
   body.innerHTML=groupSelect(); bindGroupSelect(body); if(!myGroups().length) return;
   if(S.tStudent) return studentProgress(body,byId(DB.students,S.tStudent));
   const g=byId(DB.groups,S.tGroup);
-  const sts=DB.students.filter(s=>s.group===g.id).sort((a,b)=>a.name.localeCompare(b.name,"es"));
+  const sts=DB.students.filter(s=>inGroup(s,g.id)).sort((a,b)=>a.name.localeCompare(b.name,"es"));
   body.insertAdjacentHTML("beforeend",`<div class="panel"><h3>Resumen de la clase</h3>
   ${sts.length?`<div class="tw"><table><thead><tr><th></th><th>Nombre</th><th>Días de uso</th><th>Escuchar<br><small>aciertos a la primera</small></th><th>Lectura<br><small>aciertos a la primera</small></th><th>Escritura<br><small>precisión del trazo</small></th><th>Últimas 4 semanas</th><th>Último uso</th></tr></thead><tbody>
-  ${sts.map(s=>{const recs=DB.records.filter(r=>r.st===s.id); const sm=summarize(recs);
+  ${sts.map(s=>{const recs=visibleRecs(s); const sm=summarize(recs);
     return `<tr class="click" data-s="${s.id}"><td style="font-size:1.6em">${s.avatar}</td><td><b>${esc(s.name)}</b></td><td>${sm.days}</td>
     <td><span class="chip pct" style="background:${pctColor(sm.escu)}">${sm.escu==null?"—":sm.escu+" %"}</span> <small class="muted">${sm.nU} ej.</small></td>
     <td><span class="chip pct" style="background:${pctColor(sm.lect)}">${sm.lect==null?"—":sm.lect+" %"}</span> <small class="muted">${sm.nL} ej.</small></td>
@@ -1467,7 +1523,7 @@ function tabProgress(body){
   body.querySelectorAll("[data-s]").forEach(r=>r.onclick=()=>{S.tStudent=r.dataset.s;teacherPanel();});
 }
 function studentAnalysis(s){
-  const recs=DB.records.filter(r=>r.st===s.id); const sm=summarize(recs); const wk=weekly(recs,8);
+  const recs=visibleRecs(s); const sm=summarize(recs); const wk=weekly(recs,8);
   const per=area=>{const m={}; recs.filter(r=>r.area===area&&r.lvl===1).forEach(r=>{(m[r.item]=m[r.item]||[]).push(r)}); return m;};
   const pl1=per("lectura"), pe1=per("escritura");
   const cellL=l=>{const a=pl1[l]; if(!a) return null; return Math.round(a.filter(r=>r.tries===1&&!r.fail).length/a.length*100);};
@@ -1510,6 +1566,7 @@ function studentProgress(body,s){
     <div class="row"><button class="btn small" data-backp>${ICON.back} Clase</button><span style="font-size:2em">${s.avatar}</span><h3 style="margin:0">${esc(s.name)}</h3>
     <span class="chip">Escuchar: ${LEVELS.escucha[lvlOf(s,"escucha")]}</span><span class="chip">Lectura: ${LEVELS.lectura[s.cfg.lectura]}</span><span class="chip">Escritura: ${LEVELS.escritura[s.cfg.escritura]}</span><span class="chip">${FONTS[s.cfg.font].label}</span>
     <span style="flex:1"></span><button class="btn small" data-sheet>${ICON.pencil} Ficha de repaso</button><button class="btn primary small" data-report>${ICON.print} Informe</button></div>
+    ${DB.records.some(r=>r.st===s.id)&&recs.length<DB.records.filter(r=>r.st===s.id).length?`<p class="muted small-t" style="margin:.4em 0 0">🔒 Solo ves lo que ha hecho en tus clases. Lo que hace en otras clases lo ve quien da clase allí.</p>`:""}
     <div class="stats">
       <div><div class="muted">Días de uso</div><b>${sm.days}</b><small class="muted">${sm.fails} ejercicios sin terminar bien</small></div>
       <div><div class="muted">Escuchar · aciertos a la primera</div><b>${sm.escu==null?"—":sm.escu+" %"}</b><small class="muted">${sm.nU} ejercicios</small></div>
@@ -1532,7 +1589,7 @@ function studentProgress(body,s){
 
 /* ---- Informe imprimible ---- */
 function openReport(s){
-  const A=studentAnalysis(s); const g=byId(DB.groups,s.group); const t=me();
+  const A=studentAnalysis(s); const g={name:classesOf(s).map(x=>x.name).join(" · ")}; const t=me();
   const hp=Object.assign(defaultHelps(),s.helps);
   const first=A.recs.length?Math.min(...A.recs.map(r=>r.t)):null;
   const el=document.createElement("div"); el.id="report";
@@ -1594,7 +1651,7 @@ function sheetItems(s,o){
   if(o.kind==="letras") return pickFresh(P.letters,n).map(l=>({t:l}));
   if(o.kind==="silabas") return pickFresh(P.syl,n).map(x=>({t:x}));
   if(o.kind==="flojas"){
-    const recs=DB.records.filter(r=>r.st===s.id&&r.area==="escritura"&&r.item);
+    const recs=visibleRecs(s).filter(r=>r.area==="escritura"&&r.item);
     const by={}; recs.forEach(r=>{ (by[r.item]=by[r.item]||[]).push(r.acc); });
     const weak=Object.entries(by).map(([k,v])=>({k,v:v.reduce((a,b)=>a+b,0)/v.length})).sort((a,b)=>a.v-b.v).slice(0,n).map(x=>x.k);
     const items=weak.map(k=>wordOf(k)?{t:k,w:wordOf(k)}:{t:k});
@@ -1752,9 +1809,9 @@ function tabAudios(body){
 /* ---- Copias de seguridad ---- */
 async function exportData(groupIds,withAudio){
   const gs=DB.groups.filter(g=>groupIds.includes(g.id)); const gids=new Set(gs.map(g=>g.id));
-  const students=DB.students.filter(s=>gids.has(s.group)); const sids=new Set(students.map(s=>s.id));
+  const students=DB.students.filter(s=>[s.group,...(s.extra||[])].some(id=>gids.has(id))); const sids=new Set(students.map(s=>s.id));
   const tids=new Set(gs.flatMap(g=>g.teachers||[]));
-  const data={app:"lectoescritura",version:3,exported:new Date().toISOString(),teachers:DB.teachers.filter(t=>tids.has(t.id)),groups:gs,students,records:DB.records.filter(r=>sids.has(r.st)),custom:DB.custom};
+  const data={app:"lectoescritura",version:3,exported:new Date().toISOString(),teachers:DB.teachers.filter(t=>tids.has(t.id)),groups:gs,students,records:DB.records.filter(r=>sids.has(r.st)&&gids.has(r.g||(byId(DB.students,r.st)||{}).group)),custom:DB.custom};
   if(withAudio){
     data.audios={};
     for(const k of AUDIO.keys){ const b=await IDB.get("audios",k); if(b) data.audios[k]=await new Promise(r=>{const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(b);}); }
