@@ -1471,10 +1471,10 @@ function tabTeachers(body){
     <button class="btn small" data-edit="${t.id}">Editar</button>
     ${t.id===S.teacherId&&t.admin?`<button class="btn small" data-transfer>Transferir administración</button>`:""}
     ${!t.admin&&t.id!==S.teacherId?`<button class="btn small" data-del="${t.id}">Eliminar</button>`:""}</div>`).join("")}</div>
-  <p class="muted" style="padding:0 .5em">Siempre tiene que haber al menos un docente con administración. Para borrar a quien administra, primero transfiere la administración a otro docente. Las clases se comparten desde «Clases → Editar» (por ejemplo, tutora + PT + AL).</p>`;
+  <p class="muted" style="padding:0 .5em">Puede haber varios docentes con administración (se da o se quita en «Editar»), pero siempre tiene que quedar al menos uno. Para borrar a alguien con administración, primero quítasela o transfiérela. Las clases se comparten desde «Clases → Editar» (por ejemplo, tutora + PT + AL).</p>`;
   const form=t=>modal(`<h3>${t?"Editar docente":"Nuevo docente"}</h3><div class="form">
     <label>Nombre<input type="text" data-n value="${t?esc(t.name):""}"></label>
-    ${t?"":`<label class="check"><input type="checkbox" data-adm> Administración (ve todas las clases)</label>`}
+    <label class="check"><input type="checkbox" data-adm ${t&&t.admin?"checked":""}> Administración (ve todas las clases y gestiona docentes)</label>
     <label>${t?"Nuevo PIN (déjalo vacío para no cambiarlo)":"PIN de 4 cifras"}<input type="password" inputmode="numeric" maxlength="4" data-p></label></div>
     <div class="row end"><button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Guardar</button></div>`,(m,close)=>{
       m.querySelector("[data-x]").onclick=close;
@@ -1483,8 +1483,10 @@ function tabTeachers(body){
         if(!n) return toast("Escribe el nombre");
         if((p||!t) && !/^\d{4}$/.test(p)) return toast("El PIN debe tener 4 cifras");
         if(p && DB.teachers.some(x=>x.pin===p&&x!==t)) return toast("Ese PIN ya lo usa otro docente");
-        if(t){ t.name=n; if(p) t.pin=p; } else DB.teachers.push({id:uid(),name:n,pin:p,admin:m.querySelector("[data-adm]").checked});
-        save(); close(); teacherPanel();
+        const adm=m.querySelector("[data-adm]").checked;
+        if(t && t.admin && !adm && DB.teachers.filter(x=>x.admin).length<=1) return toast("Tiene que haber al menos un administrador");
+        if(t){ t.name=n; if(p) t.pin=p; t.admin=adm; } else DB.teachers.push({id:uid(),name:n,pin:p,admin:adm});
+        save(); close(); if(t&&t.id===S.teacherId&&!adm) S.tTab="grupos"; teacherPanel();
       };
     });
   body.querySelector("[data-new]").onclick=()=>form(null);
