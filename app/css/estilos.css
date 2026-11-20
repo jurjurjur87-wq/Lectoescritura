@@ -100,7 +100,7 @@ input,select,textarea{font-family:inherit;font-size:1em;color:var(--ink);user-se
 .speak{width:4em;height:4em;border-radius:50%;background:var(--primary);color:#fff;font-size:1.3em;box-shadow:0 5px 0 var(--primary-dark);flex:none;display:grid;place-items:center}
 .speak .ico{width:1.5em;height:1.5em}
 .speak:active{transform:translateY(4px);box-shadow:0 1px 0 var(--primary-dark)}
-.options{display:grid;gap:1.2em;grid-template-columns:repeat(3,1fr);max-width:60em;margin:0 auto;width:100%}
+.options{display:grid;gap:1.2em;grid-template-columns:repeat(3,minmax(0,1fr));max-width:60em;margin:0 auto;width:100%}
 .opt{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);min-height:7em;font-size:3em;display:grid;place-items:center;border:4px solid transparent;padding:.2em}
 .opt.emo{font-size:1em}
 .opt span.in-opt{font-size:4.5em}
@@ -368,7 +368,7 @@ body.plus .tile:active,body.plus .opt:active{transform:scale(.97)}
 body.sensible .menu-tile.listen{background:var(--read);color:var(--read-ink)}
 body.plus .menu-tile.listen{background:linear-gradient(160deg,#FFF4E6,#FFDDB8)}
 body.plus .menu-tile.listen .ico-circle{animation-delay:-.9s}
-.options.four{grid-template-columns:repeat(4,1fr)}
+.options.four{grid-template-columns:repeat(4,minmax(0,1fr))}
 .claps{display:flex;gap:.05em;justify-content:center;color:#E8873D;font-size:.55em}
 body.sensible .claps{color:var(--primary)}
 .claps .ico{width:1.4em;height:1.4em}
@@ -452,7 +452,7 @@ body.plus .scissors .cut.on i{background:#E0618A}
   .opt{min-height:4.6em;font-size:2em;border-width:3px}
   .opt span.in-opt{font-size:2.7em} .opt img.in-opt{width:4em;height:4em}
   .slot{font-size:1.7em;border-radius:12px} .piece{font-size:1.6em;border-radius:12px}
-  .options.four{grid-template-columns:repeat(2,1fr)}
+  .options.four{grid-template-columns:repeat(2,minmax(0,1fr))}
   .options.wide{grid-template-columns:1fr}
   .scene .emoji{font-size:2.2em} .scene .sc-a .emoji{font-size:1.3em} .scene .picto{width:3.4em;height:3.4em}
   .slot.pic-slot{width:4.6em;height:4.6em} .pic-piece{width:4.2em;height:4.2em} img.in-slot{width:3.6em;height:3.6em} span.in-slot{font-size:2.6em}
@@ -501,7 +501,7 @@ body.plus .scissors .cut.on i{background:#E0618A}
 .opt .esc-t,.abc .esc-t,.piece .esc-t,.slot .esc-t,.word-card .esc-t{font-size:1.35em}
 .slots.words .esc-t,.slots.words ~ .tiles .esc-t{font-size:1.15em}
 button.pg{background:#fff;cursor:pointer;font:inherit} button.pg:hover{border-color:var(--primary)}
-.options.two-opt{grid-template-columns:repeat(2,1fr);max-width:44em}
+.options.two-opt{grid-template-columns:repeat(2,minmax(0,1fr));max-width:44em}
 .opt.oral{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15em;font-size:1em;min-height:9em}
 .oral-ico{width:3em;height:3em;border-radius:50%;background:var(--soft);color:var(--primary);display:grid;place-items:center;font-size:1.3em}
 .oral-n{font-weight:700;color:var(--muted)}
@@ -607,3 +607,22 @@ body.sensible .act-tile.rec{outline:2px solid #8a94a6}
   .act-ico{font-size:1.8em}
   .home .hero, .home-hero{display:none}
 }
+
+/* Repaso: actividades centradas en vertical (sin dejar media pantalla vacía en la pizarra) */
+.act-main{display:flex;flex-direction:column}
+.act-main > :first-child{margin-top:auto}
+.act-main > :last-child{margin-bottom:auto}
+.act-main > *{flex-shrink:0}
+@media (min-height:700px){ .opt.emo{min-height:max(9.5em,24vh)} .opt{min-height:max(7em,18vh)} }
+/* opciones del mismo ancho aunque una palabra sea larga */
+.opt .esc-t{max-width:100%;display:inline-flex;justify-content:center}
+.opt .esc-w{max-width:100%;height:auto}
+.opt{overflow:hidden;overflow-wrap:anywhere}
+/* aviso para girar el móvil al escribir palabras y frases */
+.trace-board{position:relative}
+.rotate-hint{display:none}
+@media (orientation:portrait) and (max-width:600px){
+  .rotate-hint{display:block;position:absolute;top:.6em;left:50%;transform:translateX(-50%);background:var(--soft);color:var(--primary);font-weight:700;font-size:.85em;padding:.35em .9em;border-radius:999px;white-space:nowrap;z-index:2;pointer-events:none}
+  .opt.oral .oral-t{font-size:.8em}
+}
+.opt .claps{display:flex;flex-wrap:wrap;justify-content:center;max-width:100%;row-gap:.1em}

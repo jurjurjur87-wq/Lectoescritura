@@ -486,21 +486,6 @@ function buildItems(area,lvl,st,n=ROUND,only){
   return items;
 }
 
-/* ---------- LEER ---------- */
-function startReading(){
-  const st=student(); const lvl=st.cfg.lectura;
-  const items=buildItems("lectura",lvl,st);
-  runRound("lectura",lvl,items,startReading);
-}
-function startListening(){
-  const st=student(); const lvl=lvlOf(st,"escucha");
-  runRound("escucha",lvl,buildItems("escucha",lvl,st),startListening);
-}
-function startWriting(){
-  const st=student();
-  if(st.cfg.escritura===1) return screenAlphabet();
-  runRound("escritura",st.cfg.escritura,buildItems("escritura",st.cfg.escritura,st),startWriting);
-}
 const TRACE_ACTS=["trazo","copia","completa","preescritura","dictado-mano","empieza-letra"];
 function runRound(area,lvl,items,again,title){
   let idx=0, good=0; const token=S.screenSeq;
@@ -558,7 +543,7 @@ function actHeader(ctx,title){
 function choiceScreen(ctx,{title,prompt,options,correct,fontCss,emo,onSay,sayKey,four,wide,two,record:rec}){
   const st=student(); applyLook();
   h(`${actHeader(ctx,title)}
-  <div class="main">
+  <div class="main act-main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt">${prompt}</div>
     <div class="options ${four?"four":""} ${wide?"wide":""} ${two?"two-opt":""}">${options.map((o,i)=>`<button class="opt ${emo?"emo":""}" data-i="${i}" style="${fontCss?`font-family:${fontCss}`:""}">${o.html}</button>`).join("")}</div>
@@ -670,7 +655,7 @@ function actBuild(it,ctx){
   const tiles=shuffle([...target.map((t,i)=>({t,i})),...extra.map((t,j)=>({t,i:-1-j}))]);
   const slots=target.map(()=>null); let tries=0, locked=false; const t0=performance.now();
   h(`${actHeader(ctx,title)}
-  <div class="main">
+  <div class="main act-main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt">${promptHTML}</div>
     <div class="slots ${joiner?"words":""}" style="font-family:${fcss}" data-slots></div>
@@ -681,8 +666,8 @@ function actBuild(it,ctx){
   app.querySelector("[data-say]").onclick=sayFn; setTimeout(sayFn,350);
   const sEl=app.querySelector("[data-slots]"), tEl=app.querySelector("[data-tiles]");
   function paint(){
-    sEl.innerHTML=slots.map((s,i)=>`<button class="slot ${s?"full":""}" data-si="${i}">${s?txt(st,s.t):""}</button>`).join(joiner?"":"");
-    tEl.innerHTML=tiles.map((t,i)=>`<button class="piece ${slots.includes(t)?"used":""}" data-ti="${i}">${txt(st,t.t)}</button>`).join("");
+    sEl.innerHTML=slots.map((s,i)=>`<button class="slot ${s?"full":""}" data-si="${i}" aria-label="${s?esc(s.t):"Hueco "+(i+1)}">${s?txt(st,s.t):""}</button>`).join(joiner?"":"");
+    tEl.innerHTML=tiles.map((t,i)=>`<button class="piece ${slots.includes(t)?"used":""}" data-ti="${i}" aria-label="${esc(t.t)}">${txt(st,t.t)}</button>`).join("");
     sEl.querySelectorAll("[data-si]").forEach(b=>b.onclick=()=>{ if(locked) return; const i=+b.dataset.si; if(slots[i]){slots[i]=null;paint();} });
     tEl.querySelectorAll("[data-ti]").forEach(b=>b.onclick=()=>{
       if(locked) return; const t=tiles[+b.dataset.ti]; if(slots.includes(t)) return;
@@ -719,7 +704,7 @@ function actMatch(it,ctx){
   const pairs=new Map(); let selL=null, tries=0, locked=false; const t0=performance.now();
   const COL=["#6A55B5","#E0618A","#2E9E8F"];
   h(`${actHeader(ctx,actName(ctx.area,ctx.lvl,it.act))}
-  <div class="main">
+  <div class="main act-main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt"><button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">Toca una palabra y después su dibujo</span></div>
     <div class="match"><div class="m-col" data-l></div><div class="m-col" data-r></div></div>
@@ -798,13 +783,11 @@ function actSound(it,ctx){
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">${start?"¿Cuál empieza por":"¿Cuál tiene"} <b class="snd">«${esc(target)}»</b>?</span>`,
     options:opts.map(w=>({html:`${pic(w.w,w.e,"emoji in-opt")}<i class="opt-w" data-word="${esc(w.w)}" hidden></i>`,ok:w===good})), emo:true,
     onSay:()=>speak([I(start?"empieza":"tiene"),Sy(target)]), record:recFirst(ctx,it)});
-  app.querySelectorAll(".opt-say").forEach(b=>b.addEventListener("click",e=>{ e.stopPropagation(); say(b.dataset.word,"palabra:"+b.dataset.word); },true));
 }
 /* Lee una lista de trozos con pausas (sílabas separadas) */
 function ttsSeq(parts,gap=450){ speak(parts.map(t=>Sy(t)),gap); }
 const clapsHTML=k=>`<span class="claps">${Array.from({length:k},()=>`<i>${ICON.clap}</i>`).join("")}</span><b>${k}</b>`;
 const picOpt=w=>`${pic(w.w,w.e,"emoji in-opt")}<i class="opt-w" data-word="${esc(w.w)}" hidden></i>`;
-function bindOptSay(){ app.querySelectorAll(".opt-say").forEach(b=>b.addEventListener("click",e=>{ e.stopPropagation(); say(b.dataset.word,"palabra:"+b.dataset.word); },true)); }
 // Palabra más larga: dos dibujos con distinto número de sílabas
 function actLonger(it,ctx){
   const short=it.act==="mas-corta";
@@ -880,7 +863,6 @@ function actEnds(it,ctx){
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Cuál termina en <b class="snd">«${esc(target)}»</b>?</span>`,
     options:shuffle([good,...bad]).map(w=>({html:picOpt(w),ok:w===good})), emo:true,
     onSay:()=>speak([I("termina"),Sy(target)]), record:recFirst(ctx,it)});
-  bindOptSay();
 }
 // La intrusa: tres empiezan igual y una no
 function actOddOne(it,ctx){
@@ -893,7 +875,6 @@ function actOddOne(it,ctx){
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Tres empiezan igual. ¿Cuál es la diferente?</span>`,
     options:shuffle([...three,odd]).map(w=>({html:picOpt(w),ok:w===odd})), emo:true, four:true,
     onSay:()=>speak([I("intrusa")]), record:recFirst(ctx,it)});
-  bindOptSay();
 }
 // Rimas
 function actRhyme(it,ctx){
@@ -907,13 +888,12 @@ function actRhyme(it,ctx){
     prompt:`${pic(base.w,base.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Qué palabra rima con <b class="snd">${esc(base.w)}</b>?</span>`,
     options:shuffle([good,...bad]).map(w=>({html:picOpt(w),ok:w===good})), emo:true,
     onSay:()=>speak([I("rima"),Wd(base.w)]), record:recFirst(ctx,it)});
-  bindOptSay();
 }
 /* Opciones que se escuchan: tocar suena y marca; «Comprobar» responde */
 function oralChoice(ctx,it,{prompt,onSay,options}){
   const st=student(); applyLook();
   h(`${actHeader(ctx,actName(ctx.area,ctx.lvl,it.act))}
-  <div class="main">
+  <div class="main act-main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt">${prompt}</div>
     <div class="options">${options.map((o,i)=>`<button class="opt oral" data-i="${i}"><span class="oral-n">${["A","B","C","D"][i]}</span><span class="oral-t">${txt(st,o.label)}</span></button>`).join("")}</div>
@@ -975,7 +955,7 @@ function actBuildScene(it,ctx){
   const tiles=shuffle([...target,{k:altS.k,e:altS.e},{k:altO.k,e:altO.e}]);
   const slots=[null,null,null]; let tries=0, locked=false; const t0=performance.now();
   h(`${actHeader(ctx,actName(ctx.area,ctx.lvl,it.act))}
-  <div class="main">
+  <div class="main act-main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt"><button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">Escucha y pon los dibujos en orden</span></div>
     <div class="slots scene-slots" data-slots></div>
@@ -986,7 +966,7 @@ function actBuildScene(it,ctx){
   const sayIt=()=>say(txt,"frase:"+txt); app.querySelector("[data-say]").onclick=sayIt; setTimeout(sayIt,350);
   const sEl=app.querySelector("[data-slots]"), tEl=app.querySelector("[data-tiles]");
   function paint(){
-    sEl.innerHTML=slots.map((t,i)=>`<button class="slot pic-slot ${t?"full":""}" data-si="${i}">${t?pic(t.k,t.e,"emoji in-slot"):`<span class="slot-n">${i+1}</span>`}</button>`).join("");
+    sEl.innerHTML=slots.map((t,i)=>`<button class="slot pic-slot ${t?"full":""}" data-si="${i}" aria-label="${t?esc(t.k):"Hueco "+(i+1)}">${t?pic(t.k,t.e,"emoji in-slot"):`<span class="slot-n">${i+1}</span>`}</button>`).join("");
     tEl.innerHTML=tiles.map((t,i)=>`<button class="piece pic-piece ${slots.includes(t)?"used":""}" data-ti="${i}">${pic(t.k,t.e,"emoji in-slot")}</button>`).join("");
     sEl.querySelectorAll("[data-si]").forEach(b=>b.onclick=()=>{ if(locked) return; const i=+b.dataset.si; if(slots[i]){slots[i]=null;paint();} });
     tEl.querySelectorAll("[data-ti]").forEach(b=>b.onclick=()=>{ if(locked) return; const t=tiles[+b.dataset.ti]; if(slots.includes(t)) return;
@@ -1012,7 +992,7 @@ function actScissors(it,ctx){
   words.forEach((w,i)=>{ [...w].forEach(c=>letters.push(c)); pos+=[...w].length; if(i<words.length-1) bounds.add(pos); });
   const cuts=new Set(); let tries=0, locked=false; const t0=performance.now();
   h(`${actHeader(ctx,actName(ctx.area,ctx.lvl,it.act))}
-  <div class="main">
+  <div class="main act-main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt">${pic(it.phrase.k,it.phrase.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">Toca entre las letras para separar las palabras</span></div>
     <div class="scissors" style="font-family:${fcss}" data-sc></div>
@@ -1140,7 +1120,7 @@ function traceScreen(o){
           <div class="side-card status"><div class="meter"><i data-meter></i></div><div class="hint" data-msg>${o.blank?"Empieza en el punto verde":ordered?"Empieza en el punto verde y sigue la flecha":"Repasa la letra con el dedo"}</div></div>
         </div>
       </div>
-      <div class="trace-board"><canvas data-guide></canvas><canvas data-demo-c></canvas><canvas data-ink></canvas></div>
+      <div class="trace-board">${text.replace(/ /g,"").length>3&&!o.layoutFn?`<div class="rotate-hint">📱↻ Gira el móvil para escribir más grande</div>`:""}<canvas data-guide></canvas><canvas data-demo-c></canvas><canvas data-ink></canvas></div>
     </div>
   </div>`);
   const board=app.querySelector(".trace-board"), meter=app.querySelector("[data-meter]"), msg=app.querySelector("[data-msg]");
@@ -1752,7 +1732,7 @@ function tabAudios(body){
   <div class="panel"><div class="tw"><table class="audio-t"><tbody>${cat.items.map((it,i)=>`<tr data-r="${i}">
     <td><b style="font-size:1.1em">${esc(it.txt)}</b>${it.hint?`<div class="muted small-t">${esc(it.hint)}</div>`:""}</td>
     <td>${AUDIO.has(it.k)?`<span class="chip">Tu voz</span>`:`<span class="muted small-t">Voz del equipo</span>`}</td>
-    <td class="acts"><button class="btn small" data-play>${ICON.play}</button><button class="btn small rec" data-rec>${ICON.mic} Grabar</button>${AUDIO.has(it.k)?`<button class="btn small" data-del>${ICON.trash}</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
+    <td class="acts"><button class="btn small" data-play aria-label="Escuchar">${ICON.play}</button><button class="btn small rec" data-rec>${ICON.mic} Grabar</button>${AUDIO.has(it.k)?`<button class="btn small" data-del>${ICON.trash}</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
   body.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{S.aCat=b.dataset.cat;teacherPanel();});
   body.querySelectorAll("tr[data-r]").forEach(tr=>{
     const it=cat.items[+tr.dataset.r];
@@ -1987,7 +1967,7 @@ function tabTeachers(body){
 /* =========================================================
    ARRANQUE
    ========================================================= */
-if("serviceWorker" in navigator && location.protocol==="https:"){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
+if("serviceWorker" in navigator && (location.protocol==="https:"||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
 if(DESKTOP && DESKTOP.onCloseRequest){
   DESKTOP.onCloseRequest(()=>{
     if(DB.settings.lock) pinGate("Para cerrar la aplicación, PIN de docente",()=>DESKTOP.confirmClose());

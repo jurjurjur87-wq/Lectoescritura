@@ -181,7 +181,7 @@ const ESCOLAR = (() => {
   // Texto completo: las palabras en minúscula se dibujan; signos, con la fuente
   function html(text) {
     const escH = t => t.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-    return `<span class="esc-t" aria-label="${escH(text)}">` + text.split(/([a-zñáéíóúü]+)/).map(part => {
+    return `<span class="esc-t" role="img" aria-label="${escH(text)}">` + text.split(/([a-zñáéíóúü]+)/).map(part => {
       if (!part) return "";
       if (/^[a-zñáéíóúü]+$/.test(part) && supports(part)) return svgWord(part);
       return `<span class="esc-o">${escH(part)}</span>`;
@@ -229,7 +229,7 @@ function createStrokeEngine(o) {
   let cur = 0, k = 0, ink = [], doneInk = [], ignoring = false, active = null, errors = 0, devSum = 0, devN = 0;
   let finished = false, demoing = false, pulse = 0, raf = 0;
   const C = Object.assign({ ink: "#3C7DD9", done: "#2E9E5B", guide: "#E9E4F3", dots: "#8A819E", start: "#2E9E5B", future: "#CFC8DD", lines: ["#D9D2E6", "#8FB7F0", "#4E8FE8"] }, o.colors || {});
-  const tk = ((o.tol && o.tol.k) || 1) * (o.blank ? 1.4 : 1);   // sin modelo: algo más de margen
+  const tk = (o.tol && o.tol.k) || 1, tkB = tk * (o.blank ? 1.4 : 1);   // sin modelo: más margen para salirse, pero el avance se mide igual
 
   function geometry() {
     const bw = Math.max(1, L.maxX - L.minX), bh = L.maxY - L.minY;
@@ -256,7 +256,9 @@ function createStrokeEngine(o) {
     if (Math.hypot(last[0] - lo[0], last[1] - lo[1]) > step * .3) out.push(last);
     return out;
   }
-  const R = () => 11 * u * tk, OFF = () => 20 * u * tk, START = () => 17 * u * tk;
+  // R decide cuánto avanza el trazo: no depende de la exigencia (si crece, en los tramos que suben y bajan por el mismo sitio se adelanta de más).
+  // La exigencia solo cambia cuánto se puede uno salir (OFF) y lo cerca que hay que empezar (START).
+  const R = () => 11 * u, OFF = () => 20 * u * tkB, START = () => 17 * u * tkB;
   const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
   function path(ctx, pts) {

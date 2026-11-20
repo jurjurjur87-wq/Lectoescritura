@@ -323,7 +323,7 @@ pelota|La pelota|es redonda;bota;rueda|es cuadrada;habla;come queso
 libro|El libro|tiene páginas;se lee|se come;ladra;tiene ruedas
 lápiz|El lápiz|sirve para escribir;tiene punta|sirve para comer;ladra;vuela solo
 tijera|La tijera|corta;sirve para cortar papel|se come;canta;es un animal
-cama|La cama|sirve para dormir;es blanda|sirve para cocinar;vuela;come
+cama|La cama|sirve para dormir;es blanda;tiene almohada|sirve para cocinar;vuela;come;tiene ruedas de coche
 silla|La silla|sirve para sentarse;tiene patas|sirve para beber;vuela;canta
 paraguas|El paraguas|se abre cuando llueve;nos tapa del agua|se come;ladra;sirve para dormir
 zapato|El zapato|se pone en el pie|se pone en la cabeza;se come;vuela
@@ -333,7 +333,6 @@ teléfono|El teléfono|sirve para hablar;suena|sirve para comer;es un animal;cre
 llave|La llave|abre la puerta|se come;vuela;ladra
 casa|La casa|tiene puertas;tiene ventanas;tiene tejado|anda;come;tiene alas
 escuela|La escuela|tiene clases;tiene pizarra|está en el mar;se come;vuela
-cama|La cama|tiene almohada|tiene ruedas de coche;vuela
 mano|La mano|tiene cinco dedos;sirve para coger|tiene ruedas;sirve para oír
 ojo|El ojo|sirve para ver|sirve para oír;sirve para comer
 oreja|La oreja|sirve para oír|sirve para ver;sirve para andar
