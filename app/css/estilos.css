@@ -374,8 +374,9 @@ body.sensible .claps{color:var(--primary)}
 .claps .ico{width:1.4em;height:1.4em}
 .opt .claps + b{display:block;font-size:.6em;color:var(--muted);margin-top:.1em}
 .opt{position:relative}
-.opt-say{position:absolute;top:.35em;right:.35em;width:2.4em;height:2.4em;border-radius:50%;background:var(--soft);color:var(--primary);display:grid;place-items:center;font-size:1rem}
-.opt-say .ico{width:1.3em;height:1.3em}
+.opt-say{position:absolute;top:.3em;right:.3em;width:3.6em;height:3.6em;box-shadow:0 2px 0 #0001;border-radius:50%;background:var(--soft);color:var(--primary);display:grid;place-items:center;font-size:1rem}
+.opt-say .ico{width:1.9em;height:1.9em}
+.opt.picked{outline:5px solid var(--primary);outline-offset:-5px;transform:scale(1.02)}
 .big-ask{font-size:1.6em!important;color:var(--ink)!important}
 .snd{color:var(--primary)}
 .scene{display:flex;align-items:center;justify-content:center;gap:.15em}

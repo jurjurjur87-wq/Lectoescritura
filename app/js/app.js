@@ -437,17 +437,26 @@ function actHeader(ctx,title){
 /* Elección entre 3 opciones (base de varias actividades) */
 function choiceScreen(ctx,{title,prompt,options,correct,fontCss,emo,onSay,sayKey,four,wide,two,record:rec}){
   const st=student(); applyLook();
+  const confirm=options.some(o=>/opt-say/.test(o.html));
   h(`${actHeader(ctx,title)}
   <div class="main">
     ${dots(ctx.idx,ctx.n)}
     <div class="prompt">${prompt}</div>
     <div class="options ${four?"four":""} ${wide?"wide":""} ${two?"two-opt":""}">${options.map((o,i)=>`<button class="opt ${emo?"emo":""}" data-i="${i}" style="${fontCss?`font-family:${fontCss}`:""}">${o.html}</button>`).join("")}</div>
+    ${confirm?`<div class="row" style="justify-content:center;margin-top:1em"><button class="btn ok big-btn" data-ok>${ICON.check} Comprobar</button></div>`:""}
   </div>`);
   bindBack(backToArea);
-  let tries=0, locked=false; const t0=performance.now();
+  let tries=0, locked=false, sel=-1; const t0=performance.now();
   const sb=app.querySelector("[data-say]"); if(sb) sb.onclick=onSay;
   if(onSay) setTimeout(onSay,350);
-  app.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{
+  const btns=[...app.querySelectorAll(".opt")];
+  // Con dibujos que se escuchan: tocar elige y lo dice; luego se comprueba
+  if(confirm){
+    btns.forEach(b=>b.onclick=()=>{ if(locked) return; sel=+b.dataset.i; btns.forEach(x=>x.classList.toggle("picked",x===b));
+      const w=b.querySelector(".opt-say")?.dataset.word; if(w) say(w,"palabra:"+w); });
+    app.querySelector("[data-ok]").onclick=()=>{ if(locked) return; if(sel<0){ tts("Toca uno de los dibujos"); return; } check(btns[sel]); };
+  } else btns.forEach(b=>b.onclick=()=>check(b));
+  function check(b){
     if(locked) return; const o=options[+b.dataset.i]; tries++;
     if(o.ok){
       locked=true; b.classList.add("ok");
@@ -458,7 +467,7 @@ function choiceScreen(ctx,{title,prompt,options,correct,fontCss,emo,onSay,sayKey
       b.classList.remove("bad"); void b.offsetWidth; b.classList.add("bad");
       tryAgain(); if(onSay) setTimeout(onSay,1100);
     }
-  });
+  }
 }
 function actChooseSound(it,ctx){
   const st=student(); const isL=it.act==="toca-letra"; const P=pools(st);
