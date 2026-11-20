@@ -65,6 +65,8 @@ En todos los juegos, tocar una opción solo la marca (si es un dibujo, además l
 - **Bloqueo del aula**: clase fija en el equipo; cambiar de clase y el modo proyección piden PIN.
 - **Copias de seguridad** en archivo (con o sin audios), con recordatorio cada 14 días.
 
+**Privacidad**: cada docente (también la administración) solo ve el progreso de las clases en las que figura como docente. Quién se añade o se quita como docente de una clase queda anotado y lo ven todos los docentes de esa clase. La administración gestiona clases, alumnado, docentes y copias, pero no ve el progreso de clases en las que no da clase.
+
 Los datos se guardan **solo en el dispositivo** donde se usa la app (en el navegador). No se envía nada a internet. La app pide al navegador que no borre sus datos. El progreso se guarda en la base de datos del navegador (IndexedDB), sin el límite de espacio de unos 5 MB del almacenamiento sencillo, así que aguanta años de uso diario en una pizarra compartida.
 
 ## Cómo usarla

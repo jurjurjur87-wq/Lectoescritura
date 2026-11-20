@@ -1268,6 +1268,18 @@ function startProjection(){
   });
 }
 
+/* Registro de quién se añade o se quita como docente de una clase (por transparencia: da acceso al progreso) */
+function logTeachers(g,before){
+  const after=g.teachers||[]; const add=after.filter(x=>!before.includes(x)), rm=before.filter(x=>!after.includes(x));
+  if(!add.length&&!rm.length) return;
+  g.log=[...(g.log||[]),{t:Date.now(),by:S.teacherId,add,rm}].slice(-40);
+}
+const tName=id=>{ const t=byId(DB.teachers,id); return t?t.name:"(docente borrado)"; };
+const logLine=e=>{ const who=(ids,verb,self)=>{ const me_=ids.includes(e.by), others=ids.filter(x=>x!==e.by).map(id=>esc(tName(id)));
+    return [me_?self:"",others.length?`${verb} a ${others.join(", ")}`:""].filter(Boolean).join(" y "); };
+  const parts=[e.add.length?who(e.add,"añadió","se añadió como docente"):"",e.rm.length?who(e.rm,"quitó","se quitó como docente"):""].filter(Boolean);
+  return `<li><span class="muted">${fmtDate(e.t)}</span> · <b>${esc(tName(e.by))}</b> ${parts.join(" y ")}</li>`; };
+
 /* ---- Clases ---- */
 function cfgFields(cfg){
   return `<div class="two">
@@ -1285,7 +1297,7 @@ function tabGroups(body){
   ${gs.length?gs.map(g=>{const n=DB.students.filter(s=>inGroup(s,g.id)).length;
     const tn=(g.teachers||[]).map(id=>byId(DB.teachers,id)).filter(Boolean).map(x=>`<span class="chip">${esc(x.name)}</span>`).join("");
     return `<div class="panel"><div class="list-item"><span class="av gicon" style="--gc:${g.color}">${g.icon||"🏫"}</span>
-    <div class="grow"><b>${esc(g.name)}</b>${DB.settings.lock&&DB.settings.fixedGroup===g.id?` <span class="chip">Clase fija en este equipo</span>`:""}<div class="muted small-t">${n} alumnos · Empieza en: Escuchar ${LEVELS.escucha[g.defaults.escucha||1]} · Leer ${LEVELS.lectura[g.defaults.lectura]} · Escribir ${LEVELS.escritura[g.defaults.escritura]} · ${FONTS[g.defaults.font].label}</div><div>${tn}</div></div>
+    <div class="grow"><b>${esc(g.name)}</b>${DB.settings.lock&&DB.settings.fixedGroup===g.id?` <span class="chip">Clase fija en este equipo</span>`:""}<div class="muted small-t">${n} alumnos · Empieza en: Escuchar ${LEVELS.escucha[g.defaults.escucha||1]} · Leer ${LEVELS.lectura[g.defaults.lectura]} · Escribir ${LEVELS.escritura[g.defaults.escritura]} · ${FONTS[g.defaults.font].label}</div><div>${tn}</div>${(g.log||[]).length&&(g.teachers||[]).includes(me().id)?`<ul class="t-log small-t">${logLine(g.log[g.log.length-1])}</ul>`:""}</div>
     <button class="btn small" data-edit="${g.id}">Editar</button><button class="btn small" data-st="${g.id}">Alumnado</button></div></div>`;}).join("")
   :`<div class="panel empty">Aún no tienes clases. Crea la primera con «Nueva clase».</div>`}`;
   body.querySelector("[data-new]").onclick=()=>groupForm(null);
@@ -1304,11 +1316,14 @@ function groupForm(g){
     <fieldset><legend>¿Por dónde empieza esta clase?</legend>${cfgFields(g.defaults)}
       <p class="muted small-t" style="margin:.3em 0 0">Los alumnos que añadas tendrán estos niveles. Después puedes ajustar a cada uno por separado.</p>
       ${isNew?"":`<button class="btn small" data-apply style="margin-top:.8em">Aplicar a todo el alumnado de la clase</button>`}</fieldset>
-    <fieldset><legend>Docentes que comparten esta clase</legend>${DB.teachers.map(x=>`<label class="check"><input type="checkbox" data-tt="${x.id}" ${(g.teachers||[]).includes(x.id)?"checked":""}> ${esc(x.name)}</label>`).join("")}</fieldset>
+    <fieldset><legend>Docentes que comparten esta clase</legend>${DB.teachers.map(x=>`<label class="check"><input type="checkbox" data-tt="${x.id}" ${(g.teachers||[]).includes(x.id)?"checked":""}> ${esc(x.name)}</label>`).join("")}
+      <p class="muted small-t" style="margin:.4em 0 0">Solo quien da clase aquí ve el progreso de esta clase. Los cambios de docentes quedan anotados y los ven todos los docentes de la clase.</p>
+      ${(g.log||[]).length?`<details style="margin-top:.5em"><summary class="small-t"><b>Historial de docentes</b></summary><ul class="t-log">${g.log.slice().reverse().map(logLine).join("")}</ul></details>`:""}</fieldset>
   </div><div class="row end">${isNew?"":`<button class="btn danger" data-del>Eliminar</button>`}<span style="flex:1"></span><button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Guardar</button></div>`,(m,close)=>{
     m.querySelectorAll("[data-c]").forEach(s=>s.onclick=()=>{color=s.dataset.c;m.querySelectorAll("[data-c]").forEach(x=>x.classList.toggle("on",x===s));});
     m.querySelectorAll("[data-i]").forEach(s=>s.onclick=()=>{icon=s.dataset.i;m.querySelectorAll("[data-i]").forEach(x=>x.classList.toggle("on",x===s));});
     m.querySelector("[data-x]").onclick=close;
+    const before=[...(g.teachers||[])];
     const collect=()=>{
       const n=m.querySelector("[data-n]").value.trim(); if(!n){toast("Pon un nombre a la clase");return false;}
       g.name=n; g.color=color; g.icon=icon; g.defaults=readCfg(m);
@@ -1316,7 +1331,7 @@ function groupForm(g){
       if(!g.teachers.includes(t.id)&&!t.admin) g.teachers.push(t.id);
       return true;
     };
-    m.querySelector("[data-ok]").onclick=()=>{ if(!collect())return; if(isNew)DB.groups.push(g); save(); close();
+    m.querySelector("[data-ok]").onclick=()=>{ if(!collect())return; logTeachers(g,isNew?[]:before); if(isNew)DB.groups.push(g); save(); close();
       if(isNew){ S.tGroup=g.id; S.tTab="alumnos"; teacherPanel(); toast("Clase creada. Ahora añade al alumnado"); bulkAdd(g); } else teacherPanel(); };
     const ap=m.querySelector("[data-apply]"); if(ap) ap.onclick=()=>{ if(!collect())return;
       confirmBox("¿Aplicar estos niveles y tipo de letra a todo el alumnado de la clase?","Aplicar",()=>{
