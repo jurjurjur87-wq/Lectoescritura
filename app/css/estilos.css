@@ -533,7 +533,7 @@ body.sensible .act-tile.rec{outline:2px solid #8a94a6}
 .opt .yn{display:block;font-size:1.2em;line-height:1.1}
 .opt .yn + b{display:block;font-size:.55em}
 .prompt .pair{display:flex;gap:.6em}
-.prompt .pair-p{font-size:4.5em}
+.prompt span.pair-p{font-size:4.5em}
 .prompt img.pair-p{width:6em;height:6em}
 /* La tarjeta equivocada */
 .opt.picword{display:flex;flex-direction:column;justify-content:center;gap:.2em}
@@ -653,3 +653,5 @@ body.sensible .act-tile.rec{outline:2px solid #8a94a6}
 }
 .t-log{list-style:none;padding:0;margin:.3em 0 0;display:flex;flex-direction:column;gap:.15em}
 .t-log li::before{content:"👥 "}
+/* Pictogramas: nunca más grandes que su hueco */
+img.picto{object-fit:contain;max-width:100%;max-height:100%}

@@ -147,6 +147,8 @@ function tts(text){
 function say(text,key){
   SPK++;
   if(key && AUDIO.has(key)){ try{speechSynthesis.cancel();}catch(e){} AUDIO.play(key); return; }
+  if(key&&key.startsWith("silaba:")) text=sylVoice(text);
+  else if(key&&key.startsWith("palabra:")&&WORD_VOICE[text]) text=WORD_VOICE[text];
   tts(text);
 }
 /* Enunciados: el docente puede grabarlos por trozos. Si no hay ninguno grabado, se dicen enteros con la voz del equipo */
@@ -166,8 +168,19 @@ const INSTR={
   "toca":"Toca una de las respuestas","huecos":"Primero completa todos los huecos","ayuda":"Te ayudo: he quitado una"
 };
 const I=id=>({k:"ins:"+id,t:INSTR[id].replace(/…/g,"").trim()});
-const Wd=w=>({k:"palabra:"+w,t:w});
-const Sy=x=>({k:"silaba:"+x,t:x});
+const Wd=w=>({k:"palabra:"+w,t:WORD_VOICE[w]||w});
+/* Sílabas sueltas: algunas voces las leen como palabras inglesas («to» → «tu», «he» → «ji»).
+   Con tilde en la vocal fuerte (tó, hé, qué, güé…) la voz las lee siempre en español; no cambia lo que se ve. */
+const ACC_V={a:"á",e:"é",i:"í",o:"ó",u:"ú"};
+function sylVoice(x){
+  x=String(x).toLowerCase(); if(/[áéíóú]/.test(x)) return x;
+  let i=-1; for(let j=x.length-1;j>=0;j--) if("aeo".includes(x[j])){ i=j; break; }
+  if(i<0) for(let j=x.length-1;j>=0;j--) if("iu".includes(x[j])){ i=j; break; }
+  return i<0?x:x.slice(0,i)+ACC_V[x[i]]+x.slice(i+1);
+}
+// palabras sueltas que coinciden con palabras inglesas
+const WORD_VOICE={pie:"pié",pan:"pán"};
+const Sy=x=>({k:"silaba:"+x,t:sylVoice(x)});
 function ttsWait(text){
   return new Promise(res=>{ let done=false; const fin=()=>{ if(!done){done=true;res();} };
     try{ if(!("speechSynthesis" in window)) return fin();
@@ -864,7 +877,8 @@ function actCountWords(it,ctx){
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`${pic(it.phrase.k,it.phrase.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">¿Cuántas palabras tiene la frase?</span>`,
     options:opts.map(k=>({html:clapsHTML(k),ok:k===n})), four:opts.length===4,
-    onSay:()=>speak(t.replace(/[.,]/g,"").split(" ").map(x=>({t:x})),250), record:recFirst(ctx,it)});
+    // palabra a palabra con pausas, pero en una sola frase (las palabras sueltas a veces se leen en inglés: «pan», «la»…)
+    onSay:()=>tts(t.replace(/[.,]/g,"").split(" ").join(", ")+"."), record:recFirst(ctx,it)});
 }
 // ¿Cómo termina? (última sílaba)
 function actEnds(it,ctx){
@@ -1058,12 +1072,12 @@ function screenAlphabet(){
 function traceLetter(l){
   const st=student(); const en=enabledLetters(st);
   const w=wordOf(LETTER_WORD[l]);
-  traceScreen({text:l,title:`La letra ${show(st,l)}`,word:w,speak:()=>say(`${LETTER_NAMES[l]}, de ${w.w}`,"letra:"+l),
+  traceScreen({text:l,title:`La letra ${show(st,l)}`,word:w,speak:()=>say(`La ${LETTER_NAMES[l]}, de ${w.w}`,"letra:"+l),
     lvl:1,act:"trazo",autoDemo:true,onBack:screenAlphabet,nextLabel:"Siguiente letra",
     onDone:()=>{ const i=en.indexOf(l); traceLetter(en[(i+1)%en.length]); }});
 }
 const cleanPhrase=t=>t.replace(/[.,¿?¡!]/g,"").trim();
-const sayItem=(it,lvl)=>it.phrase?say(it.phrase.t,"frase:"+it.phrase.t):lvl===1?say(LETTER_NAMES[it.key]||it.key,"letra:"+it.key):lvl===2?say(it.key,"silaba:"+it.key):say(it.key,"palabra:"+it.key);
+const sayItem=(it,lvl)=>it.phrase?say(it.phrase.t,"frase:"+it.phrase.t):lvl===1?say(`La ${LETTER_NAMES[it.key]||it.key}`,"letra:"+it.key):lvl===2?say(it.key,"silaba:"+it.key):say(it.key,"palabra:"+it.key);
 // Tarjeta lateral con el modelo grande (sin dibujo): letras, sílabas y frases
 const modelCard=(st,text,ph)=>`<div class="side-card word-card big-model">${ph?pic(ph.k,ph.e):""}<div class="word model-${text.length>8?"long":"short"}" style="font-family:${fontOf(st).css}">${txt(st,text)}</div></div>`;
 const earCard=()=>`<div class="side-card word-card ear-card"><span class="ear-big">${ICON.ear}</span><div class="muted">Escucha y escribe</div></div>`;
@@ -1807,7 +1821,7 @@ function phraseForm(f){
 function tabAudios(body){
   const cats={
     letras:{label:"Letras",items:LETTERS.map(l=>({k:"letra:"+l,txt:l,tts:`¿Dónde está la ${LETTER_NAMES[l]}?`,hint:`Ej.: «${LETTER_NAMES[l]}» o «¿dónde está la ${LETTER_NAMES[l]}?»`}))},
-    silabas:{label:"Sílabas",items:SYLLABLES.map(x=>({k:"silaba:"+x,txt:x,tts:x}))},
+    silabas:{label:"Sílabas",items:SYLLABLES.map(x=>({k:"silaba:"+x,txt:x,tts:sylVoice(x)}))},
     palabras:{label:"Palabras",items:WORDS.map(w=>({k:"palabra:"+w.w,txt:w.w,tts:w.w}))},
     frases:{label:"Frases",items:PHRASES.map(p=>({k:"frase:"+p.t,txt:p.t,tts:p.t}))},
     enunciados:{label:"Enunciados",items:Object.entries(INSTR).map(([k,v])=>({k:"ins:"+k,txt:v,tts:v.replace(/…/g,"").trim(),hint:v.includes("…")?"Graba solo este trozo: la palabra o sílaba la pone la app":""}))},
@@ -1980,6 +1994,7 @@ function tabSettings(body){
     ${opt("pic","auto",st.pictos!=="emoji","Pictogramas ARASAAC cuando estén descargados","Se usan solos en todas las actividades. Si falta alguno, se usa el emoji. Se descargan una vez con internet y quedan guardados en este equipo.")}
     ${opt("pic","emoji",st.pictos==="emoji","Solo emojis","No se usan pictogramas aunque estén descargados (las fotos propias sí se usan).")}
     <div class="row"><button class="btn small" data-dl>Descargar pictogramas</button><span class="muted small-t" data-dlst>${pictoList().filter(w=>PICTO.has(w)).length} de ${pictoList().length} descargados</span></div>
+    ${(()=>{ const miss=pictoList().filter(w=>!PICTO.has(w)); return miss.length&&miss.length<40?`<p class="small-t" style="margin:.6em 0 .3em"><b>Sin pictograma</b> (se ve el emoji). Toca uno para buscarlo en ARASAAC con otra palabra o poner una foto:</p><div class="row" style="gap:.4em">${miss.map(w=>`<button class="btn small" data-choose="${esc(w)}">${esc(w)}</button>`).join("")}</div>`:""; })()}
     <details style="margin-top:.8em" ${S.openPictos?"open":""} data-pdet><summary class="small-t"><b>Ver y cambiar dibujos</b></summary><div class="picto-grid">${pictoItems().map(w=>`<div class="pg"><div class="pg-img">${PICTO.has(w.k)?`<img src="${PICTO.urls[w.k]}" alt="">`:`<span>${w.e}</span>`}</div><div class="small-t">${esc(w.k)}</div>
       <div class="row" style="justify-content:center;gap:.3em"><button class="btn small" data-choose="${esc(w.k)}">ARASAAC</button><label class="btn small">Foto<input type="file" accept="image/*" data-pw="${esc(w.k)}" hidden></label></div></div>`).join("")}</div></details>
     <p class="muted small-t">Pictogramas: Sergio Palao. Origen: ARASAAC (arasaac.org). Licencia: CC BY-NC-SA. Propiedad: Gobierno de Aragón (España).</p></div>
@@ -2005,15 +2020,16 @@ function tabSettings(body){
   body.querySelectorAll("[data-pw]").forEach(inp=>inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; await PICTO.set(inp.dataset.pw,f);
     st.ownImages=[...new Set([...(st.ownImages||[]),inp.dataset.pw])]; save(); toast("Dibujo cambiado"); rerender(); });
   body.querySelector("[data-dl]").onclick=async()=>{
-    const stEl=body.querySelector("[data-dlst]"); let ok=0, fail=0;
+    const stEl=body.querySelector("[data-dlst]"); let ok=0, fail=0; const missing=[];
     const list=pictoList().filter(w=>!(st.ownImages||[]).includes(w)&&!(st.pickedPictos||{})[w]);
     let i=0, stop=false;
     const worker=async()=>{ while(i<list.length && !stop){ const w=list[i++];
-      try{ await PICTO.fetchArasaac(w); ok++; }catch(e){ fail++; if(fail>=4&&ok===0){ stop=true; } }
+      try{ await PICTO.fetchArasaac(w); ok++; }catch(e){ fail++; missing.push(w); if(fail>=4&&ok===0){ stop=true; } }
       stEl.textContent=`Descargando… ${ok+fail} de ${list.length}`; } };
     await Promise.all([worker(),worker(),worker(),worker()]);
     if(stop){ stEl.textContent="No se ha podido conectar con ARASAAC. Comprueba la conexión a internet."; return; }
-    st.pictos="arasaac"; save(); toast(`Pictogramas descargados: ${ok}${fail?` (${fail} sin encontrar)`:""}`); rerender();
+    st.pictoMissing=missing.sort((a,b)=>a.localeCompare(b,"es")); st.pictos="auto"; save();
+    toast(`Pictogramas descargados: ${ok}${fail?` (${fail} sin encontrar: se usa el emoji)`:""}`); rerender();
   };
 }
 

@@ -101,10 +101,25 @@ const PICTO = {
     await this.set(word, await img.blob());
   },
   // Elige el pictograma cuya palabra clave coincide exactamente (no el primero que salga)
+  // Si ARASAAC no tiene la palabra tal cual, se prueba con un sinónimo, sin tilde o en plural/singular
+  SYN: { "váter": "inodoro", "puzle": "puzzle", "yoyó": "yoyo", "cuenco": "bol", "tirita": "apósito", "monopatín": "monopatín", "caracola": "concha",
+    "cachorro": "perrito", "trofeo": "copa", "pajarita": "pajarita", "patín": "patines", "chincheta": "chincheta", "boca": "boca", "ponerse": "vestirse",
+    "coger": "coger", "conducir": "conducir", "zumo": "zumo", "chancla": "chanclas", "gafas": "gafas", "palomitas": "palomitas", "bocadillo": "bocadillo",
+    "cerdo": "cerdo", "llanto": "llorar", "risa": "reír", "sueño": "dormir", "cariño": "abrazar", "beso": "besar", "pisada": "huella" },
   async fetchArasaac(word) {
+    const strip = t => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const tries = [...new Set([word, this.SYN[word], strip(word), word.endsWith("s") ? word.slice(0, -1) : word + "s"].filter(Boolean))];
+    let lastErr = null;
+    for (const q of tries) {
+      try { return await this.fetchOne(word, q); } catch (e) { lastErr = e; if (e.message === "sin conexión") throw e; }
+    }
+    throw lastErr || new Error("no encontrado");
+  },
+  async fetchOne(word, q) {
     const norm = t => (t || "").toLowerCase().trim();
     let list = [];
-    try { list = await this.searchArasaac(word); } catch (e) { throw e; }
+    try { list = await this.searchArasaac(q); } catch (e) { throw e; }
+    word = q;
     const exact = list.filter(p => (p.keywords || []).some(k => norm(k.keyword) === norm(word)));
     const pref = exact.filter(p => !p.schematic && !p.violence && !p.sex);
     let best = (pref[0] || exact[0]);
@@ -113,7 +128,7 @@ const PICTO = {
       if (r.ok) { const l = await r.json(); best = l[0]; }
     }
     if (!best) throw new Error("no encontrado");
-    await this.saveId(word, best._id);
+    await this.saveId(arguments[0], best._id);
     return best._id;
   },
 };
