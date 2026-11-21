@@ -1288,6 +1288,7 @@ function firstSteps(){
 function teacherPanel(){
   flushPending(); S.screenSeq=(S.screenSeq||0)+1;
   const t=me(); if(!t) return screenGroups(true);
+  const oldTabs=app.querySelector(".teacher .tabs"); const tabsX=oldTabs?oldTabs.scrollLeft:0;   // en el móvil, la barra de pestañas no vuelve al principio
   const oldMain=app.querySelector(".teacher .main"); const keep=oldMain && S.tTabPrev===S.tTab+"|"+(S.tStudent||"") ? oldMain.scrollTop : 0;
   S.tTabPrev=S.tTab+"|"+(S.tStudent||"");
   document.body.classList.remove("grande");
@@ -1301,6 +1302,9 @@ function teacherPanel(){
   app.querySelector("[data-out]").onclick=()=>{S.teacherId=null;screenGroups(true);};
   app.querySelector("[data-proj]").onclick=startProjection;
   app.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{S.tTab=b.dataset.tab; S.tStudent=null; teacherPanel();});
+  const tabsEl=app.querySelector(".teacher .tabs"); if(tabsEl){ tabsEl.scrollLeft=tabsX;
+    const on=tabsEl.querySelector("button.on"); if(on){ const r=on.getBoundingClientRect(), t=tabsEl.getBoundingClientRect();
+      if(r.left<t.left) tabsEl.scrollLeft-=t.left-r.left+12; else if(r.right>t.right) tabsEl.scrollLeft+=r.right-t.right+12; } }
   app.querySelectorAll("[data-step]").forEach(b=>b.onclick=()=>{ const k=b.dataset.step;
     if(k==="clase"){ S.tTab="grupos"; teacherPanel(); groupForm(null); }
     else if(k==="alumnos"){ const g=myGroups()[0]; S.tGroup=g.id; S.tTab="alumnos"; teacherPanel(); bulkAdd(g); }
