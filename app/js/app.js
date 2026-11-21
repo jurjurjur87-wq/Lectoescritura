@@ -634,7 +634,7 @@ function actChooseSound(it,ctx){
 }
 function actChooseWord(it,ctx){
   const st=student(); const P=pools(st);
-  const opts=shuffle([it.word,...shuffle(P.words.filter(x=>x.w!==it.word.w)).slice(0,2)]);
+  const opts=shuffle([it.word,...spread(P.words.filter(x=>x.w!==it.word.w),[it.word],2)]);
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`${pic(it.word.w,it.word.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button>`,
     options:opts.map(x=>({html:txt(st,x.w),ok:x===it.word})), fontCss:fontOf(st).css,
@@ -643,7 +643,7 @@ function actChooseWord(it,ctx){
 }
 function actChoosePicture(it,ctx){
   const st=student(); const P=pools(st);
-  const opts=shuffle([it.phrase,...shuffle(P.phr.filter(x=>x.k!==it.phrase.k)).slice(0,2)]);
+  const opts=shuffle([it.phrase,...spread(P.phr.filter(x=>x.k!==it.phrase.k),[it.phrase],2)]);
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<span class="phrase" style="font-family:${fontOf(st).css}">${txt(st,it.phrase.t)}</span><button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button>`,
     options:opts.map(x=>({html:pic(x.k,x.e,"emoji in-opt"),ok:x===it.phrase})), emo:true,
@@ -743,7 +743,16 @@ function actBuild(it,ctx){
 }
 
 /* ---------- LEER: une, tarjeta equivocada, verdad o mentira ---------- */
-const distinctPics=(arr,n)=>{ const out=[], seen=new Set(); for(const w of arr){ if(seen.has(w.e)) continue; seen.add(w.e); out.push(w); if(out.length===n) break; } return out; };
+// ¿Se confundirían dos dibujos? Mismo emoji, misma familia (pan/barra, perro/cachorro…) o mismo pictograma de ARASAAC
+const keyW=x=>typeof x==="string"?x:(x.w||x.k);
+function clash(a,b){ const A=keyW(a), B=keyW(b); if(A===B) return true;
+  if(a.e&&b.e&&a.e===b.e) return true;
+  if(FAM[A]!=null&&FAM[A]===FAM[B]) return true;
+  const ids=DB.settings.pictoIds||{}; return !!(ids[A]&&ids[A]===ids[B]); }
+// Elige n de cands que no se confundan entre sí ni con los ya elegidos
+function spread(cands,chosen,n){ const out=[]; for(const c of shuffle(cands)){ if([...chosen,...out].some(x=>clash(x,c))) continue; out.push(c); if(out.length===n) break; }
+  return out.length===n?out:out.concat(shuffle(cands.filter(c=>!out.includes(c)&&!chosen.includes(c))).slice(0,n-out.length)); }
+const distinctPics=(arr,n)=>spread(arr,[],n);
 // Une palabra y dibujo: tres parejas
 function actMatch(it,ctx){
   const st=student(); applyLook(); const P=pools(st); const fcss=fontOf(st).css;
@@ -787,7 +796,8 @@ function actWrongCard(it,ctx){
   const src=P.words.length>=8?P.words:WORDS;
   const cards=distinctPics(pickFresh(src,6),3); const odd=pick(cards);
   const first=w=>stripAcc(w.s[0]);
-  const lie=pick(src.filter(w=>w.e!==odd.e&&!cards.includes(w)&&first(w)===first(odd)))||pick(src.filter(w=>w.e!==odd.e&&!cards.includes(w)));
+  const ok=w=>!cards.includes(w)&&!cards.some(c=>clash(c,w));
+  const lie=pick(src.filter(w=>ok(w)&&first(w)===first(odd)))||pick(src.filter(ok));
   it.key="equivocada:"+odd.w;
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Qué tarjeta tiene mal la palabra?</span>`,
@@ -822,7 +832,7 @@ function actSound(it,ctx){
     target=start?stripAcc(good.s[0]):stripAcc(pick(good.s));
     const t=target;
     const cand=WORDS.filter(w=>w!==good && (start ? stripAcc(w.s[0])!==t && stripAcc(w.w)[0]!==t[0] : !stripAcc(w.w).includes(t)));
-    if(cand.length>=2){ bad=shuffle(cand).slice(0,2); break; }
+    if(cand.length>=2){ bad=spread(cand,[good],2); break; }
   }
   it.key=(start?"empieza:":"suena:")+target;
   const opts=shuffle([good,...bad]);
@@ -839,7 +849,7 @@ const picOpt=w=>`${pic(w.w,w.e,"emoji in-opt")}<i class="opt-w" data-word="${esc
 // Palabra más larga: dos dibujos con distinto número de sílabas
 function actLonger(it,ctx){
   const short=it.act==="mas-corta";
-  let a,b; for(let i=0;i<80;i++){ a=pickFresh(WORDS,1)[0]; b=pick(WORDS); if(a!==b&&a.s.length!==b.s.length) break; }
+  let a,b; for(let i=0;i<80;i++){ a=pickFresh(WORDS,1)[0]; b=pick(WORDS); if(!clash(a,b)&&a.s.length!==b.s.length) break; }
   const good=short?(a.s.length<b.s.length?a:b):(a.s.length>b.s.length?a:b); it.key=(short?"corta:":"larga:")+good.w;
   const q=short?"¿Cuál tiene menos palmadas?":"¿Cuál tiene más palmadas?";
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
@@ -849,7 +859,7 @@ function actLonger(it,ctx){
 }
 // Une las sílabas: se oyen separadas y se elige el dibujo
 function actBlend(it,ctx){
-  const w=it.word; const others=shuffle(WORDS.filter(x=>x!==w&&x.s[0]!==w.s[0])).slice(0,2);
+  const w=it.word; const others=spread(WORDS.filter(x=>x!==w&&x.s[0]!==w.s[0]),[w],2);
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Escucha los trocitos y toca el dibujo</span>`,
     options:shuffle([w,...others]).map(x=>({html:pic(x.w,x.e,"emoji in-opt"),ok:x===w})), emo:true,
@@ -859,8 +869,8 @@ function actBlend(it,ctx){
 function actSameStart(it,ctx){
   const first=w=>stripAcc(w.s[0]);
   const a=pickFresh(WORDS.filter(w=>w.s.length>1),1)[0]; const same=Math.random()<.5;
-  let b=same?pick(WORDS.filter(w=>w!==a&&first(w)===first(a))):null;
-  if(!b) b=pick(WORDS.filter(w=>first(w)!==first(a)&&stripAcc(w.w)[0]!==stripAcc(a.w)[0]));
+  let b=same?pick(WORDS.filter(w=>!clash(w,a)&&first(w)===first(a))):null;
+  if(!b) b=pick(WORDS.filter(w=>!clash(w,a)&&first(w)!==first(a)&&stripAcc(w.w)[0]!==stripAcc(a.w)[0]));
   const yes=first(a)===first(b); it.key="igual:"+a.w+"/"+b.w;
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<span class="pair">${pic(a.w,a.e,"emoji pair-p")}${pic(b.w,b.e,"emoji pair-p")}</span><button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Empiezan igual?</span>`,
@@ -871,8 +881,8 @@ function actSameStart(it,ctx){
 function actChain(it,ctx){
   const last=w=>stripAcc(w.s[w.s.length-1]), first=w=>stripAcc(w.s[0]);
   const bases=WORDS.filter(a=>WORDS.some(b=>b!==a&&first(b)===last(a)));
-  const a=pickFresh(bases,1)[0]; const good=pick(WORDS.filter(b=>b!==a&&first(b)===last(a)));
-  const bad=shuffle(WORDS.filter(b=>b!==a&&first(b)!==last(a)&&stripAcc(b.w)[0]!==last(a)[0])).slice(0,2);
+  const a=pickFresh(bases,1)[0]; const good=pick(WORDS.filter(b=>!clash(b,a)&&first(b)===last(a)))||pick(WORDS.filter(b=>b!==a&&first(b)===last(a)));
+  const bad=spread(WORDS.filter(b=>b!==a&&first(b)!==last(a)&&stripAcc(b.w)[0]!==last(a)[0]),[a,good],2);
   it.key="cadena:"+a.w;
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`${pic(a.w,a.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Qué palabra empieza como termina <b class="snd">${esc(a.w)}</b>?</span>`,
@@ -884,7 +894,8 @@ function actAdd(it,ctx){
   const w=pickFresh(WORDS.filter(x=>x.s.length>=2&&x.s.length<=3&&x.s.slice(1).join("").length>=2),1)[0];
   const frag=w.s.slice(1).join(""), syl=w.s[0];
   const sameEnd=WORDS.filter(x=>x!==w&&stripAcc(x.w).endsWith(stripAcc(frag))&&stripAcc(x.s[0])!==stripAcc(syl));
-  const bad=shuffle(sameEnd).slice(0,1).concat(shuffle(WORDS.filter(x=>x!==w&&!sameEnd.includes(x)&&stripAcc(x.s[0])!==stripAcc(syl)))).slice(0,2);
+  const b1=spread(sameEnd,[w],1);
+  const bad=b1.concat(spread(WORDS.filter(x=>x!==w&&!sameEnd.includes(x)&&stripAcc(x.s[0])!==stripAcc(syl)),[w,...b1],2-b1.length));
   it.key="anade:"+w.w;
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Si a <b class="snd">«${esc(frag)}»</b> le pones delante <b class="snd">«${esc(syl)}»</b>, ¿qué palabra sale?</span>`,
@@ -906,7 +917,7 @@ function actEnds(it,ctx){
   let good,bad,target;
   for(let i=0;i<60;i++){ good=i<3?pickFresh(WORDS.filter(w=>w.s.length>1),1)[0]:pick(WORDS.filter(w=>w.s.length>1)); target=stripAcc(good.s[good.s.length-1]);
     const cand=WORDS.filter(w=>w!==good&&stripAcc(w.s[w.s.length-1])!==target&&!stripAcc(w.w).endsWith(target));
-    if(cand.length>=2){ bad=shuffle(cand).slice(0,2); break; } }
+    if(cand.length>=2){ bad=spread(cand,[good],2); break; } }
   it.key="termina:"+target;
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Cuál termina en <b class="snd">«${esc(target)}»</b>?</span>`,
@@ -917,8 +928,11 @@ function actEnds(it,ctx){
 function actOddOne(it,ctx){
   const groups={}; WORDS.forEach(w=>{ const k=stripAcc(w.s[0]); (groups[k]=groups[k]||[]).push(w); });
   const keys=Object.keys(groups).filter(k=>groups[k].length>=3);
-  const k=pickFresh(keys,1,x=>"intrusa:"+x)[0]; const three=shuffle(groups[k]).slice(0,3);
-  const odd=pick(WORDS.filter(w=>stripAcc(w.s[0])!==k&&stripAcc(w.w)[0]!==k[0]));
+  // grupos con al menos 3 palabras de dibujos bien distintos
+  const okKeys=keys.filter(x=>{ const t=spread(groups[x],[],3); return !t.some((a,i)=>t.some((b,j)=>j>i&&clash(a,b))); });
+  const k=pickFresh(okKeys.length?okKeys:keys,1,x=>"intrusa:"+x)[0]; let three=spread(groups[k],[],3);
+  for(let i=0;i<20&&three.some((a,x)=>three.some((b,y)=>y>x&&clash(a,b)));i++) three=spread(groups[k],[],3);
+  const odd=spread(WORDS.filter(w=>stripAcc(w.s[0])!==k&&stripAcc(w.w)[0]!==k[0]),three,1)[0];
   it.key="intrusa:"+k;
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">Tres empiezan igual. ¿Cuál es la diferente?</span>`,
@@ -931,7 +945,7 @@ function actRhyme(it,ctx){
   const keys=Object.keys(groups).filter(k=>groups[k].length>=2);
   const k=pickFresh(keys,1,x=>"rima:"+x)[0]; const [base,good]=shuffle(groups[k]).slice(0,2);
   const end2=x=>stripAcc(x).slice(-2);
-  const bad=shuffle(WORDS.filter(w=>rimaKey(w.w)!==k&&end2(w.w)!==end2(base.w))).slice(0,2);
+  const bad=spread(WORDS.filter(w=>rimaKey(w.w)!==k&&end2(w.w)!==end2(base.w)),[base,good],2);
   it.key="rima:"+base.w;
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`${pic(base.w,base.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask big-ask">¿Qué palabra rima con <b class="snd">${esc(base.w)}</b>?</span>`,
@@ -988,8 +1002,8 @@ function sceneText(sc){ return `${sc.s.t} ${sc.a.t} ${sc.o.t}.`; }
 function sceneHTML(sc,cls=""){ return `<span class="scene ${cls}">${pic(sc.s.k,sc.s.e,"emoji sc-s")}<span class="sc-a">${pic(sc.a.k,sc.a.e,"emoji sc-v")}</span>${pic(sc.o.k,sc.o.e,"emoji sc-o")}</span>`; }
 function actChooseScene(it,ctx){
   const sc=it.scene; const txt=sceneText(sc);
-  const altS=pick(SCENE_SUBJ.filter(x=>x.k!==sc.s.k&&sc.a.who.includes(x.k)));
-  const altO=pick(sc.a.objs.filter(x=>x.k!==sc.o.k));
+  const altS=pick(SCENE_SUBJ.filter(x=>x.k!==sc.s.k&&sc.a.who.includes(x.k)&&!clash(x,sc.s)))||pick(SCENE_SUBJ.filter(x=>x.k!==sc.s.k&&sc.a.who.includes(x.k)));
+  const altO=pick(sc.a.objs.filter(x=>x.k!==sc.o.k&&!clash(x,sc.o)))||pick(sc.a.objs.filter(x=>x.k!==sc.o.k));
   const opts=shuffle([{sc,ok:true},{sc:{s:altS,a:sc.a,o:sc.o}},{sc:{s:sc.s,a:sc.a,o:altO}}]);
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">Escucha y toca el dibujo</span>`,
@@ -998,8 +1012,8 @@ function actChooseScene(it,ctx){
 }
 function actBuildScene(it,ctx){
   const sc=it.scene; const txt=sceneText(sc); applyLook();
-  const altS=pick(SCENE_SUBJ.filter(x=>x.k!==sc.s.k&&sc.a.who.includes(x.k)));
-  const altO=pick(sc.a.objs.filter(x=>x.k!==sc.o.k));
+  const altS=pick(SCENE_SUBJ.filter(x=>x.k!==sc.s.k&&sc.a.who.includes(x.k)&&!clash(x,sc.s)))||pick(SCENE_SUBJ.filter(x=>x.k!==sc.s.k&&sc.a.who.includes(x.k)));
+  const altO=pick(sc.a.objs.filter(x=>x.k!==sc.o.k&&!clash(x,sc.o)))||pick(sc.a.objs.filter(x=>x.k!==sc.o.k));
   const target=[{k:sc.s.k,e:sc.s.e},{k:sc.a.k,e:sc.a.e},{k:sc.o.k,e:sc.o.e}];
   const tiles=shuffle([...target,{k:altS.k,e:altS.e},{k:altO.k,e:altO.e}]);
   const slots=[null,null,null]; let tries=0, locked=false; const t0=performance.now();
@@ -1969,7 +1983,7 @@ function chooseArasaac(word,done){
         stEl.textContent="Toca el que mejor encaje:";
         g.innerHTML=list.slice(0,18).map(p=>`<button class="pg" data-id="${p._id}"><div class="pg-img"><img src="${PICTO.thumb(p._id)}" alt=""></div><div class="small-t">${esc((p.keywords&&p.keywords[0]&&p.keywords[0].keyword)||"")}</div></button>`).join("");
         g.querySelectorAll("[data-id]").forEach(b=>b.onclick=async()=>{ stEl.textContent="Guardando…";
-          try{ await PICTO.saveId(word,+b.dataset.id); DB.settings.pickedPictos=Object.assign({},DB.settings.pickedPictos,{[word]:+b.dataset.id});
+          try{ await PICTO.saveId(word,+b.dataset.id); DB.settings.pickedPictos=Object.assign({},DB.settings.pickedPictos,{[word]:+b.dataset.id}); DB.settings.pictoIds=Object.assign({},DB.settings.pictoIds,{[word]:+b.dataset.id});
             DB.settings.ownImages=(DB.settings.ownImages||[]).filter(x=>x!==word); save(); close(); toast("Pictograma elegido"); done&&done(); }
           catch(e){ stEl.textContent="No se ha podido descargar. Comprueba la conexión."; } });
       }catch(e){ stEl.textContent="No se ha podido conectar con ARASAAC. Comprueba la conexión a internet."; }
@@ -2047,7 +2061,7 @@ function tabSettings(body){
     const list=pictoList().filter(w=>!(st.ownImages||[]).includes(w)&&!(st.pickedPictos||{})[w]&&!PICTO.BUILTIN[w]);
     let i=0, stop=false;
     const worker=async()=>{ while(i<list.length && !stop){ const w=list[i++];
-      try{ await PICTO.fetchArasaac(w); ok++; }catch(e){ fail++; missing.push(w); if(fail>=4&&ok===0){ stop=true; } }
+      try{ const id=await PICTO.fetchArasaac(w); st.pictoIds=Object.assign({},st.pictoIds,{[w]:id}); ok++; }catch(e){ fail++; missing.push(w); if(fail>=4&&ok===0){ stop=true; } }
       stEl.textContent=`Descargando… ${ok+fail} de ${list.length}`; } };
     await Promise.all([worker(),worker(),worker(),worker()]);
     if(stop){ stEl.textContent="No se ha podido conectar con ARASAAC. Comprueba la conexión a internet."; return; }

@@ -130,6 +130,17 @@ const SHORT_PHRASES = (()=>{ const seen=new Set(), out=[];
    ...PHRASES.filter(p=>{ const c=p.t.replace(/[.,¿?¡!]/g,""); return c.split(" ").length<=3 && c.length<=14; })]
   .forEach(p=>{ if(!seen.has(p.t)){ seen.add(p.t); const w=WORDS.find(x=>x.w===p.k); out.push({t:p.t,k:p.k,e:p.e||(w&&w.e)||"📝"}); } });
   return out; })();
+// Familias de dibujos parecidos: nunca salen juntas como opciones en un mismo ejercicio
+const FAMILIAS = [
+  ["pan","barra"],["perro","cachorro"],["árbol","pino"],["flor","rosa","tulipán","girasol"],
+  ["zapato","zapatilla","bota","tacón","chancla"],["gorra","sombrero","casco"],["taza","té"],["coche","taxi"],
+  ["barco","yate","lancha","canoa"],["vaca","toro"],["mono","gorila"],["caballo","caballito"],["ostra","caracola"],
+  ["tarta","pastel","magdalena"],["camión","furgoneta"],["ratón","rata"],["pulpo","calamar"],["gamba","langosta"],
+  ["gusano","oruga"],["mosca","mosquito"],["moneda","dinero"],["luna","noche"],["nube","niebla"],["metro","tren","tranvía"],
+  ["isla","playa"],["camino","carretera"],["casa","cabaña"],["lápiz","bolígrafo"],["libro","cuaderno"],["pato","cisne"],
+  ["regalo","caja"],["agua","ola"],["hielo","nieve"],["pájaro","paloma"]
+];
+const FAM = {}; FAMILIAS.forEach((f,i)=>f.forEach(w=>FAM[w]=i));
 // Frases de verdad o mentira, a partir del banco
 const VERDAD = BANCO_VERDAD.trim().split("\n").flatMap(l=>{ const [k,suj,v,f]=l.split("|");
   return [...v.split(";").map(p=>({k,t:`${suj} ${p}.`,ok:true})),...f.split(";").map(p=>({k,t:`${suj} ${p}.`,ok:false}))]; });
