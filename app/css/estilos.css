@@ -482,7 +482,6 @@ body.plus .scissors .cut.on i{background:#E0618A}
   .keypad{grid-template-columns:repeat(3,4em)}
   .keypad button{height:4em}
   .two{grid-template-columns:1fr}
-  .top .who .nm{display:none}
   .report{padding:6mm}
   .home-head{gap:.7em;padding:.9em}
   .home-logo{width:3em;height:3em}
@@ -682,3 +681,8 @@ body.plus .home .school img{display:block;height:clamp(5em,14vh,15em);width:auto
 body.plus .home .school figcaption{margin-top:.45em;font-weight:800;font-size:1.15em;letter-spacing:.02em;color:var(--primary)}
 body.plus .main.home{display:flex;flex-direction:column}
 body.plus .main.home > *{flex-shrink:0}
+
+/* Nombre del alumno siempre visible junto a su icono (en pantallas estrechas se recorta con «…») */
+.top .who .nm{max-width:16em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){ .top .who .nm{max-width:6.5em} .top h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .menu-tile .badge{position:static;order:-1;margin:0 auto .5em;font-size:.5em} }
