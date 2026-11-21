@@ -128,8 +128,8 @@ function record(area,lvl,item,tries,acc,ms,act){
 let VOICE=null;
 function pickVoice(){
   if(!("speechSynthesis" in window)) return;
-  const vs=speechSynthesis.getVoices();
-  VOICE = vs.find(v=>/^es[-_]ES/i.test(v.lang)) || vs.find(v=>/^es/i.test(v.lang)) || null;
+  const vs=speechSynthesis.getVoices(); const want=DB&&DB.settings&&DB.settings.voice;
+  VOICE = (want&&vs.find(v=>v.voiceURI===want)) || vs.find(v=>/^es[-_]ES/i.test(v.lang)) || vs.find(v=>/^es/i.test(v.lang)) || null;
 }
 if("speechSynthesis" in window){ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice; }
 function tts(text){
@@ -180,6 +180,9 @@ function sylVoice(x){
 }
 // palabras sueltas que coinciden con palabras inglesas
 const WORD_VOICE={pie:"pié",pan:"pán"};
+// Nombres de letras para la voz: «be», «de», «te», «a», «i»… se leen a veces en inglés («bi», «ti», «ei») aunque vayan
+// dentro de una frase. Con tilde (bé, dé, té, á, í) la voz los dice en español. En pantalla no cambia nada.
+const LV=l=>{ const n=LETTER_NAMES[l]||l; return /^[^aeiouáéíóú]*[aeiou][^aeiouáéíóú]*$/.test(n)?sylVoice(n):n; };
 const Sy=x=>({k:"silaba:"+x,t:sylVoice(x)});
 function ttsWait(text){
   return new Promise(res=>{ let done=false; const fin=()=>{ if(!done){done=true;res();} };
@@ -360,7 +363,7 @@ function screenGroups(force){
   app.querySelector("[data-teacher]").onclick=teacherLogin;
   const sb0=app.querySelector("[data-start]"); if(sb0) sb0.onclick=teacherLogin;
   const fb=app.querySelector("[data-fs]"); if(fb) fb.onclick=toggleFullscreen;
-  app.querySelector("[data-lotd]").onclick=()=>{ const l=letterOfDay(); const w=LETTER_WORD[l]; say(`La letra de hoy es la ${LETTER_NAMES[l]}, de ${w}`,"letra:"+l); };
+  app.querySelector("[data-lotd]").onclick=()=>{ const l=letterOfDay(); const w=LETTER_WORD[l]; say(`La letra de hoy es la ${LV(l)}, de ${w}`,"letra:"+l); };
   app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{S.groupId=b.dataset.g; screenStudents();});
 }
 function screenStudents(){
@@ -608,7 +611,7 @@ function actChooseSound(it,ctx){
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">${isL?"Escucha y toca la letra":"Escucha y toca la sílaba"}</span>${isL&&st.helps.picto&&w?pic(w.w,w.e):""}`,
     options:opts.map(x=>({html:txt(st,x),ok:x===it.key})), fontCss:fontOf(st).css,
-    onSay:()=>isL?say(`¿Dónde está la ${LETTER_NAMES[it.key]}?`,"letra:"+it.key):say(it.key,"silaba:"+it.key),
+    onSay:()=>isL?say(`¿Dónde está la ${LV(it.key)}?`,"letra:"+it.key):say(it.key,"silaba:"+it.key),
     record:(tries,ms)=>record("lectura",ctx.lvl,it.key,tries,tries===1?100:Math.max(0,100-50*(tries-1)),ms,it.act)});
 }
 function actChooseWord(it,ctx){
@@ -1072,12 +1075,12 @@ function screenAlphabet(){
 function traceLetter(l){
   const st=student(); const en=enabledLetters(st);
   const w=wordOf(LETTER_WORD[l]);
-  traceScreen({text:l,title:`La letra ${show(st,l)}`,word:w,speak:()=>say(`La ${LETTER_NAMES[l]}, de ${w.w}`,"letra:"+l),
+  traceScreen({text:l,title:`La letra ${show(st,l)}`,word:w,speak:()=>say(`La ${LV(l)}, de ${w.w}`,"letra:"+l),
     lvl:1,act:"trazo",autoDemo:true,onBack:screenAlphabet,nextLabel:"Siguiente letra",
     onDone:()=>{ const i=en.indexOf(l); traceLetter(en[(i+1)%en.length]); }});
 }
 const cleanPhrase=t=>t.replace(/[.,¿?¡!]/g,"").trim();
-const sayItem=(it,lvl)=>it.phrase?say(it.phrase.t,"frase:"+it.phrase.t):lvl===1?say(`La ${LETTER_NAMES[it.key]||it.key}`,"letra:"+it.key):lvl===2?say(it.key,"silaba:"+it.key):say(it.key,"palabra:"+it.key);
+const sayItem=(it,lvl)=>it.phrase?say(it.phrase.t,"frase:"+it.phrase.t):lvl===1?say(`La ${LV(it.key)}`,"letra:"+it.key):lvl===2?say(it.key,"silaba:"+it.key):say(it.key,"palabra:"+it.key);
 // Tarjeta lateral con el modelo grande (sin dibujo): letras, sílabas y frases
 const modelCard=(st,text,ph)=>`<div class="side-card word-card big-model">${ph?pic(ph.k,ph.e):""}<div class="word model-${text.length>8?"long":"short"}" style="font-family:${fontOf(st).css}">${txt(st,text)}</div></div>`;
 const earCard=()=>`<div class="side-card word-card ear-card"><span class="ear-big">${ICON.ear}</span><div class="muted">Escucha y escribe</div></div>`;
@@ -1820,7 +1823,7 @@ function phraseForm(f){
 /* ---- Audios ---- */
 function tabAudios(body){
   const cats={
-    letras:{label:"Letras",items:LETTERS.map(l=>({k:"letra:"+l,txt:l,tts:`¿Dónde está la ${LETTER_NAMES[l]}?`,hint:`Ej.: «${LETTER_NAMES[l]}» o «¿dónde está la ${LETTER_NAMES[l]}?»`}))},
+    letras:{label:"Letras",items:LETTERS.map(l=>({k:"letra:"+l,txt:l,tts:`¿Dónde está la ${LV(l)}?`,hint:`Ej.: «${LETTER_NAMES[l]}» o «¿dónde está la ${LETTER_NAMES[l]}?»`}))},
     silabas:{label:"Sílabas",items:SYLLABLES.map(x=>({k:"silaba:"+x,txt:x,tts:sylVoice(x)}))},
     palabras:{label:"Palabras",items:WORDS.map(w=>({k:"palabra:"+w.w,txt:w.w,tts:w.w}))},
     frases:{label:"Frases",items:PHRASES.map(p=>({k:"frase:"+p.t,txt:p.t,tts:p.t}))},
@@ -1988,6 +1991,12 @@ function tabSettings(body){
     ${opt("cel","check",cur==="check","Solo una marca ✓","Aparece un ✓ verde y desaparece.")}
     ${opt("cel","nada",cur==="nada","Sin animaciones","Solo cambia de color la respuesta o el trazo.")}
     <div class="row" style="margin-top:.4em"><button class="btn small" data-test>${ICON.eye} Probar</button></div></div>
+  <div class="panel"><h3>Voz de lectura</h3>
+    ${(()=>{ const vs=("speechSynthesis" in window)?speechSynthesis.getVoices():[]; const es_=vs.filter(v=>/^es/i.test(v.lang));
+      return vs.length?`<p class="muted" style="margin-top:0">${es_.length?"Elige la voz en español que mejor suene en este equipo.":"⚠️ Este equipo no tiene ninguna voz en español: algunas palabras pueden sonar en inglés. Instala una voz en español en los ajustes del sistema (Texto a voz)."}</p>
+        <label class="form"><select data-voice class="sel">${[...es_,...vs.filter(v=>!es_.includes(v))].map(v=>`<option value="${esc(v.voiceURI)}" ${VOICE&&VOICE.voiceURI===v.voiceURI?"selected":""}>${esc(v.name)} (${esc(v.lang)})</option>`).join("")}</select></label>`
+        :`<p class="muted" style="margin-top:0">Este navegador no deja ver ni elegir las voces (Brave las oculta por privacidad, por ejemplo), así que usa la voz del sistema. Si alguna palabra suena en inglés, abre la app en Chrome o pon el español como idioma de «Texto a voz» en los ajustes del móvil o la tablet.</p>`; })()}
+    <div class="row"><button class="btn small" data-vtest>${ICON.speaker} Probar la voz</button></div></div>
   <div class="panel"><h3>Voz de ánimo</h3>
     ${opt("praise","1",st.praise!==false,"Decir «¡Muy bien!» al acertar","Si lo desactivas, la voz solo lee los enunciados. Puedes grabar tus propios ánimos en la pestaña Audios.","checkbox")}</div>
   <div class="panel"><h3>Dibujos</h3>
@@ -2015,6 +2024,8 @@ function tabSettings(body){
   body.querySelector("input[name=lock]").onchange=e=>{st.lock=e.target.checked; save(); rerender(); toast("Guardado");};
   body.querySelector("[data-fixed]").onchange=e=>{st.fixedGroup=e.target.value||null; save(); toast("Guardado");};
   body.querySelector("[data-test]").onclick=()=>{ celebrate(); praise(); };
+  const vsel=body.querySelector("[data-voice]"); if(vsel) vsel.onchange=()=>{ st.voice=vsel.value; save(); pickVoice(); tts(`La letra de hoy es la ${LV("b")}, de bota.`); };
+  body.querySelector("[data-vtest]").onclick=()=>tts(`La letra de hoy es la ${LV("b")}, de bota. ¿Qué palabra empieza por ${sylVoice("to")}?`);
   const det=body.querySelector("[data-pdet]"); if(det) det.ontoggle=()=>{S.openPictos=det.open;};
   body.querySelectorAll("[data-choose]").forEach(b=>b.onclick=()=>chooseArasaac(b.dataset.choose,rerender));
   body.querySelectorAll("[data-pw]").forEach(inp=>inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; await PICTO.set(inp.dataset.pw,f);
