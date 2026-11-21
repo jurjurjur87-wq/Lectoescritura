@@ -386,6 +386,7 @@ function screenGroups(force){
     :`<div class="empty start-box"><p style="font-size:1.3em">Todavía no hay clases.</p>
       ${DB.teachers.length?`<button class="btn primary big-btn" data-start>👩‍🏫 Entrar como docente y crear la primera clase</button>`
         :`<p>Para empezar, crea tu cuenta de docente. Después podrás crear la clase y añadir al alumnado.</p><button class="btn primary big-btn" data-start>👩‍🏫 Empezar: crear mi cuenta</button>`}</div>`}
+    <figure class="school"><img src="img/colegio.svg" alt="Dibujo del colegio"><figcaption>CEIP Salvador Allende</figcaption></figure>
   </div>`);
   app.querySelector("[data-teacher]").onclick=teacherLogin;
   const sb0=app.querySelector("[data-start]"); if(sb0) sb0.onclick=teacherLogin;

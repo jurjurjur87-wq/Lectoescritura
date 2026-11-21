@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-label="Dibujo del colegio">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C9DFF3"/><stop offset="1" stop-color="#F1F6FB"/></linearGradient>
+    <pattern id="azulejo" width="14" height="14" patternUnits="userSpaceOnUse">
+      <rect width="14" height="14" fill="#FBFBFD"/>
+      <path d="M7 1 L13 7 L7 13 L1 7Z" fill="none" stroke="#3E63A8" stroke-width="1.6"/>
+      <circle cx="7" cy="7" r="1.6" fill="#3E63A8"/>
+    </pattern>
+    <pattern id="persiana" width="8" height="5" patternUnits="userSpaceOnUse">
+      <rect width="8" height="5" fill="#F4F1EA"/><rect y="4" width="8" height="1" fill="#DDD7CB"/>
+    </pattern>
+    <pattern id="losas" width="40" height="20" patternUnits="userSpaceOnUse">
+      <rect width="40" height="20" fill="#E7E4DE"/><path d="M0 0.5H40M0.5 0V20" stroke="#D3CFC7" stroke-width="1"/>
+    </pattern>
+    <symbol id="ventana" viewBox="0 0 60 36">
+      <rect width="60" height="36" rx="2" fill="#FFFFFF"/>
+      <rect x="3" y="3" width="54" height="17" fill="url(#persiana)"/>
+      <rect x="3" y="20" width="26" height="13" fill="#5E7183"/><rect x="31" y="20" width="26" height="13" fill="#6C8092"/>
+      <path d="M6 22 L14 22 L8 31Z" fill="#8FA3B5" opacity=".6"/>
+    </symbol>
+    <symbol id="reja" viewBox="0 0 60 34">
+      <rect width="60" height="34" fill="#55606B"/>
+      <path d="M6 0V34M13 0V34M20 0V34M27 0V34M34 0V34M41 0V34M48 0V34M55 0V34M0 11H60M0 23H60" stroke="#8B5A3C" stroke-width="2"/>
+    </symbol>
+  </defs>
+
+  <!-- cielo, nubes y monte -->
+  <rect width="1200" height="320" fill="url(#sky)"/>
+  <g fill="#FFFFFF" opacity=".9">
+    <ellipse cx="150" cy="40" rx="90" ry="22"/><ellipse cx="210" cy="30" rx="60" ry="20"/>
+    <ellipse cx="620" cy="28" rx="110" ry="18"/><ellipse cx="700" cy="20" rx="60" ry="15"/>
+    <ellipse cx="1050" cy="36" rx="80" ry="16"/>
+  </g>
+  <path d="M0 240 Q60 205 130 222 T260 232 L260 262 L0 262Z" fill="#B7C4BE"/>
+
+  <!-- suelo -->
+  <rect y="258" width="1200" height="62" fill="url(#losas)"/>
+  <path d="M330 320 L760 262" stroke="#F0C232" stroke-width="5"/>
+
+  <!-- edificio -->
+  <rect x="255" y="74" width="925" height="188" fill="#F4E0A6"/>
+  <path d="M238 60 H1196 L1190 77 H246Z" fill="#C88A3A"/>
+  <path d="M238 60 H1196" stroke="#A9692C" stroke-width="4"/>
+  <rect x="255" y="128" width="925" height="7" fill="#E4B964"/>
+  <rect x="255" y="186" width="925" height="7" fill="#E4B964"/>
+
+  <!-- ventanas plantas 1.ª y 2.ª -->
+  <g>
+    <use href="#ventana" x="270" y="88" width="56" height="34"/>
+    <use href="#ventana" x="378" y="88" width="60" height="36"/><use href="#ventana" x="460" y="88" width="60" height="36"/>
+    <use href="#ventana" x="590" y="88" width="60" height="36"/><use href="#ventana" x="690" y="88" width="60" height="36"/>
+    <use href="#ventana" x="830" y="88" width="60" height="36"/><use href="#ventana" x="925" y="88" width="60" height="36"/>
+    <use href="#ventana" x="1040" y="88" width="60" height="36"/>
+    <use href="#ventana" x="270" y="144" width="56" height="34"/>
+    <use href="#ventana" x="460" y="144" width="60" height="36"/>
+    <use href="#ventana" x="590" y="144" width="60" height="36"/><use href="#ventana" x="690" y="144" width="60" height="36"/>
+    <use href="#ventana" x="830" y="144" width="60" height="36"/><use href="#ventana" x="925" y="144" width="60" height="36"/>
+    <use href="#ventana" x="1040" y="144" width="60" height="36"/>
+  </g>
+
+  <!-- porche de entrada -->
+  <rect x="340" y="193" width="460" height="69" fill="#BFAE86"/>
+  <rect x="340" y="193" width="460" height="10" fill="#A8976F"/>
+  <rect x="420" y="208" width="110" height="54" fill="#3F4852"/>
+  <path d="M447 208V262M475 208V262M503 208V262" stroke="#6E7883" stroke-width="2"/>
+  <rect x="560" y="214" width="70" height="30" fill="#59646F"/><rect x="660" y="214" width="70" height="30" fill="#59646F"/>
+  <rect x="340" y="186" width="460" height="9" fill="#F7EBC2"/>
+  <!-- carteles -->
+  <rect x="372" y="166" width="70" height="18" rx="2" fill="#FFFFFF" stroke="#2E7D4F" stroke-width="2"/>
+  <rect x="375" y="169" width="14" height="12" fill="#2E7D4F"/><path d="M393 172H437M393 177H430" stroke="#2E7D4F" stroke-width="2"/>
+  <rect x="448" y="168" width="34" height="15" rx="2" fill="#FFFFFF" stroke="#9AA6B2" stroke-width="1.5"/>
+  <!-- banderas -->
+  <path d="M398 166 L404 130 M410 166 L416 130 M422 166 L428 130" stroke="#8C8C8C" stroke-width="2"/>
+  <path d="M404 131 L398 139 L396 160 L402 150Z" fill="#2B4C9B"/>
+  <path d="M416 131 L410 139 L408 160 L414 150Z" fill="#E7C02F"/><path d="M416 131 L413 135 L410 157 L412 153Z" fill="#C8352B"/>
+  <path d="M428 131 L422 139 L420 160 L426 150Z" fill="#F7F7F7"/><path d="M428 131 L425 135 L422 157 L424 153Z" fill="#1E8A4C"/>
+
+  <!-- pilares -->
+  <g fill="#E3AE55">
+    <rect x="255" y="74" width="18" height="188"/>
+    <rect x="345" y="74" width="22" height="114"/><rect x="545" y="74" width="22" height="188"/>
+    <rect x="785" y="74" width="22" height="188"/><rect x="1005" y="74" width="22" height="188"/>
+    <rect x="1162" y="74" width="18" height="188"/>
+  </g>
+  <rect x="345" y="193" width="22" height="69" fill="#E3AE55"/>
+
+  <!-- planta baja: rejas y zócalo de azulejos -->
+  <use href="#reja" x="275" y="200" width="56" height="32"/>
+  <use href="#reja" x="830" y="200" width="60" height="34"/><use href="#reja" x="925" y="200" width="60" height="34"/>
+  <use href="#reja" x="1045" y="200" width="60" height="34"/>
+  <rect x="255" y="238" width="90" height="20" fill="url(#azulejo)"/>
+  <rect x="807" y="238" width="373" height="20" fill="url(#azulejo)"/>
+  <rect x="345" y="226" width="22" height="32" fill="url(#azulejo)"/><rect x="545" y="226" width="22" height="32" fill="url(#azulejo)"/>
+  <rect x="785" y="226" width="22" height="32" fill="url(#azulejo)"/><rect x="1005" y="226" width="22" height="32" fill="url(#azulejo)"/>
+  <rect x="255" y="257" width="925" height="5" fill="#2E7D4F"/>
+  <rect x="340" y="257" width="460" height="5" fill="#A8976F"/>
+
+  <!-- cipreses -->
+  <g>
+    <path d="M60 262 C40 230 48 170 70 128 C92 170 100 230 80 262Z" fill="#2C5637"/>
+    <path d="M108 262 C84 220 92 150 120 100 C146 150 152 220 132 262Z" fill="#2F5C3B"/>
+    <path d="M160 262 C132 215 142 130 172 76 C202 130 210 215 186 262Z" fill="#2A5235"/>
+    <path d="M214 262 C186 210 196 110 228 52 C260 110 268 210 242 262Z" fill="#305E3D"/>
+    <path d="M228 60 C246 110 250 200 236 262" stroke="#4B7E55" stroke-width="5" fill="none" opacity=".6"/>
+    <path d="M172 84 C188 130 192 210 180 262" stroke="#4B7E55" stroke-width="4" fill="none" opacity=".6"/>
+  </g>
+
+  <!-- naranjos -->
+  <g>
+    <rect x="828" y="252" width="66" height="12" fill="#B5563A"/>
+    <path d="M858 254 C856 225 852 205 842 186 M856 220 C866 205 878 196 892 188 M852 205 C838 196 826 192 812 190" stroke="#6B4A33" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <g fill="#6E9A45"><circle cx="820" cy="180" r="34"/><circle cx="870" cy="160" r="40"/><circle cx="905" cy="185" r="28"/><circle cx="845" cy="135" r="26"/></g>
+    <g fill="#8BB25A" opacity=".8"><circle cx="860" cy="150" r="20"/><circle cx="828" cy="172" r="16"/></g>
+    <g fill="#F2A23A"><circle cx="812" cy="170" r="5"/><circle cx="850" cy="182" r="5"/><circle cx="880" cy="150" r="5"/><circle cx="898" cy="190" r="5"/><circle cx="838" cy="140" r="4.5"/><circle cx="866" cy="198" r="4.5"/><circle cx="905" cy="168" r="4.5"/></g>
+    <g fill="#6E9A45"><circle cx="1195" cy="175" r="40"/><circle cx="1165" cy="150" r="26"/></g>
+    <g fill="#F2A23A"><circle cx="1172" cy="160" r="5"/><circle cx="1188" cy="190" r="5"/></g>
+  </g>
+</svg>
