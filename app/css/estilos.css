@@ -658,3 +658,19 @@ body.sensible .act-tile.rec{outline:2px solid #8a94a6}
 .t-log li::before{content:"👥 "}
 /* Pictogramas: nunca más grandes que su hueco */
 img.picto{object-fit:contain;max-width:100%;max-height:100%}
+
+/* Pizarra baja (ajuste por clase): en pantallas grandes, el contenido que toca el alumnado baja a la mitad inferior.
+   La barra superior (volver) queda arriba, al alcance del docente. */
+@media (min-width:1100px) and (min-height:880px){
+  body.low .main{display:flex;flex-direction:column}
+  body.low .main > :first-child{margin-top:auto}
+  body.low .main > .hero{margin-bottom:.8em}
+  body.low .act-main > :last-child{margin-bottom:0}
+  body.low .act-main{padding-bottom:1.5em}
+  body.low .act-main .prompt{padding-top:.6em;padding-bottom:.6em;min-height:0;margin-bottom:.8em}
+  body.low .act-main .progress-dots{margin-bottom:.4em}
+  body.low .opt, body.low .opt.emo{min-height:22vh}
+  body.low .okbar{margin-top:.7em}
+  body.low .act-tile{min-height:0}
+  body.low .trace-wrap{flex:0 0 auto;height:60vh;margin-top:auto}
+}

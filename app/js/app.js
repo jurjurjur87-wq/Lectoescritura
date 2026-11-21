@@ -272,6 +272,8 @@ function applyLook(){
   document.body.classList.toggle("grande", !!(st && st.helps && st.helps.grande));
   document.body.classList.toggle("sensible", !!sensible());
   document.body.classList.toggle("plus", plus());
+  const g=S.groupId&&DB.groups.find(x=>x.id===S.groupId);
+  document.body.classList.toggle("low", !!(g && g.low));   // «Pizarra baja»: lo que toca el alumno, en la mitad inferior
 }
 function topBar(title,back,right=""){
   const st=inStudent()?student():null;
@@ -1289,6 +1291,7 @@ function firstSteps(){
     ${step(3,tried,"Pruébalo: elige un alumno o «Toda la clase» y haz una actividad","probar",hasSt)}</ol></div>`;
 }
 function teacherPanel(){
+  document.body.classList.remove("low");
   flushPending(); S.screenSeq=(S.screenSeq||0)+1;
   const t=me(); if(!t) return screenGroups(true);
   const oldTabs=app.querySelector(".teacher .tabs"); const tabsX=oldTabs?oldTabs.scrollLeft:0;   // en el móvil, la barra de pestañas no vuelve al principio
@@ -1380,6 +1383,8 @@ function groupForm(g){
     <fieldset><legend>¿Por dónde empieza esta clase?</legend>${cfgFields(g.defaults)}
       <p class="muted small-t" style="margin:.3em 0 0">Los alumnos que añadas tendrán estos niveles. Después puedes ajustar a cada uno por separado.</p>
       ${isNew?"":`<button class="btn small" data-apply style="margin-top:.8em">Aplicar a todo el alumnado de la clase</button>`}</fieldset>
+    <fieldset><legend>Pizarra</legend><label class="check"><input type="checkbox" data-low ${g.low?"checked":""}> Pizarra baja: poner todo lo que toca el alumnado en la parte de abajo de la pantalla</label>
+      <p class="muted small-t" style="margin:.3em 0 0">Para que los más pequeños lleguen sin estirarse. Solo cambia en pantallas grandes, como la pizarra.</p></fieldset>
     <fieldset><legend>Docentes que comparten esta clase</legend>${DB.teachers.map(x=>`<label class="check"><input type="checkbox" data-tt="${x.id}" ${(g.teachers||[]).includes(x.id)?"checked":""}> ${esc(x.name)}</label>`).join("")}
       <p class="muted small-t" style="margin:.4em 0 0">Solo quien da clase aquí ve el progreso de esta clase. Los cambios de docentes quedan anotados y los ven todos los docentes de la clase.</p>
       ${(g.log||[]).length?`<details style="margin-top:.5em"><summary class="small-t"><b>Historial de docentes</b></summary><ul class="t-log">${g.log.slice().reverse().map(logLine).join("")}</ul></details>`:""}</fieldset>
@@ -1390,7 +1395,7 @@ function groupForm(g){
     const before=[...(g.teachers||[])];
     const collect=()=>{
       const n=m.querySelector("[data-n]").value.trim(); if(!n){toast("Pon un nombre a la clase");return false;}
-      g.name=n; g.color=color; g.icon=icon; g.defaults=readCfg(m);
+      g.name=n; g.color=color; g.icon=icon; g.defaults=readCfg(m); g.low=!!m.querySelector("[data-low]").checked;
       g.teachers=[...m.querySelectorAll("[data-tt]")].filter(x=>x.checked).map(x=>x.dataset.tt);
       if(!g.teachers.includes(t.id)&&!t.admin) g.teachers.push(t.id);
       return true;
