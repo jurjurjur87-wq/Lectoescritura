@@ -161,7 +161,8 @@ const INSTR={
   "di":"Di…","reves":"…al revés","igual":"¿Empiezan igual?","cadena":"¿Qué palabra empieza como termina…",
   "cuantas-pal":"¿Cuántas palabras tiene la frase?","trocitos":"Escucha los trocitos y toca el dibujo","escena":"Escucha y toca el dibujo",
   "verdad":"¿Es verdad o es mentira?","une":"Une cada palabra con su dibujo","equivocada":"¿Qué tarjeta tiene mal la palabra?",
-  "copia":"Copia lo que ves","completa":"¿Qué letra falta? Escríbela","completa-silaba":"¿Qué sílaba falta? Escríbela",
+  "copia-letra":"Copia la letra","copia-silaba":"Copia la sílaba","copia-palabra":"Copia la palabra","copia-frase":"Copia la frase",
+  "repasa-letra":"Repasa la letra","repasa-silaba":"Repasa la sílaba","repasa-palabra":"Repasa la palabra","repasa-frase":"Repasa la frase","completa":"¿Qué letra falta? Escríbela","completa-silaba":"¿Qué sílaba falta? Escríbela",
   "escribe-ves":"¿Qué es? Escribe su nombre","ordena":"Ordena las letras","escribe-oyes":"Escribe lo que oyes",
   "empieza-letra":"¿Con qué letra empieza? Escríbela","pre":"Repasa el camino sin salirte","completa-frase":"¿Qué palabra falta? Escríbela",
   "dictado-frase":"Escucha y forma la frase",
@@ -180,14 +181,17 @@ function sylVoice(x){
 }
 // palabras sueltas que coinciden con palabras inglesas
 const WORD_VOICE={pie:"pié",pan:"pán"};
-/* SOLO PARA LA VOZ (nunca se muestra en pantalla): se marca con tilde la sílaba que ya es tónica en cada palabra
+/* SOLO PARA LA VOZ (nunca se muestra en pantalla): se marca con tilde la sílaba que ya es tónica en las palabras cortas
    («cóme», «sále», «pié»). En español no cambia la pronunciación, pero impide que la voz lea palabras como «come»,
    «sale», «be» o «to» en inglés. Las palabras átonas cortas (el, la, de, en…) se dejan igual para que suene natural. */
-const UNSTRESSED=new Set(["el","la","los","las","lo","un","una","unos","unas","de","del","a","al","en","con","por","para","y","o","u","e","que","se","le","les","nos","os","su","sus","mi","mis","tu","tus","ni","sin"]);
+const UNSTRESSED=new Set(["el","la","los","las","lo","un","una","unos","unas","de","del","a","al","en","con","por","para","y","o","u","e","que","se","le","les","nos","os","su","sus","mi","mis","tu","tus","ni","sin","te","me","si"]);
 const ACCV={a:"á",e:"é",i:"í",o:"ó",u:"ú",A:"Á",E:"É",I:"Í",O:"Ó",U:"Ú"};
 function stressWord(w){
   const low=w.toLowerCase();
   if(/[áéíóú]/i.test(w)||UNSTRESSED.has(low)||!/[aeiou]/i.test(w)) return w;
+  // Solo palabras cortas (to, be, come, sale…), que son las que la voz confunde con el inglés. En las largas o con
+  // diptongo la tilde de más puede cambiar la pronunciación («cópia» sonaba «copía»), así que se dejan como están.
+  if(low.length>4||/[aeiouü][aeiou]|[aeiou]y$/.test(low)) return w;
   const syl=silabear(low); if(!syl.length) return w;
   const last=low[low.length-1];
   const si=syl.length===1?0:(/[aeiouns]/.test(last)?syl.length-2:syl.length-1);
@@ -386,7 +390,7 @@ function screenGroups(force){
   app.querySelector("[data-teacher]").onclick=teacherLogin;
   const sb0=app.querySelector("[data-start]"); if(sb0) sb0.onclick=teacherLogin;
   const fb=app.querySelector("[data-fs]"); if(fb) fb.onclick=toggleFullscreen;
-  app.querySelector("[data-lotd]").onclick=()=>{ const l=letterOfDay(); const w=LETTER_WORD[l]; say(`La letra de hoy es la ${LV(l)}, de ${w}`,"letra:"+l); };
+  app.querySelector("[data-lotd]").onclick=()=>{ const l=letterOfDay(); const w=LETTER_WORD[l]; say(`La letra de hoy es: ${LV(l)}, de ${w}`,"letra:"+l); };
   app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{S.groupId=b.dataset.g; screenStudents();});
 }
 function screenStudents(){
@@ -634,7 +638,7 @@ function actChooseSound(it,ctx){
   choiceScreen(ctx,{title:actName(ctx.area,ctx.lvl,it.act),
     prompt:`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">${isL?"Escucha y toca la letra":"Escucha y toca la sílaba"}</span>${isL&&st.helps.picto&&w?pic(w.w,w.e):""}`,
     options:opts.map(x=>({html:txt(st,x),ok:x===it.key})), fontCss:fontOf(st).css,
-    onSay:()=>isL?say(`¿Dónde está la ${LV(it.key)}?`,"letra:"+it.key):say(it.key,"silaba:"+it.key),
+    onSay:()=>isL?say(LV(it.key),"letra:"+it.key):say(it.key,"silaba:"+it.key),
     record:(tries,ms)=>record("lectura",ctx.lvl,it.key,tries,tries===1?100:Math.max(0,100-50*(tries-1)),ms,it.act)});
 }
 function actChooseWord(it,ctx){
@@ -672,7 +676,7 @@ function actMissing(it,ctx){
 /* Construir tocando piezas en orden: sílabas → palabra, palabras → frase, letras → dictado */
 function actBuild(it,ctx){
   const st=student(); applyLook(); const fcss=fontOf(st).css; const P=pools(st);
-  let target,extra,promptHTML,sayFn,title=actName(ctx.area,ctx.lvl,it.act),joiner="";
+  let target,extra,promptHTML,sayFn,introFn=null,title=actName(ctx.area,ctx.lvl,it.act),joiner="";
   if(it.act==="forma-palabra"){
     target=[...it.word.s]; extra=shuffle(P.syl.filter(x=>!target.includes(x))).slice(0,1);
     promptHTML=`${pic(it.word.w,it.word.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button>`;
@@ -685,25 +689,25 @@ function actBuild(it,ctx){
     const w=it.word; target=[...w.w];
     extra=it.act==="ordena-letras"?[]:shuffle(enabledLetters(st).filter(l=>!stripAcc(w.w).includes(l))).slice(0,2);
     promptHTML=`${pic(w.w,w.e)}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">${it.act==="ordena-letras"?"Ordena las letras":"¿Qué es? Escribe su nombre"}</span>`;
-    sayFn=it.act==="ordena-letras"?()=>speak([I("ordena"),Wd(w.w)]):()=>speak([I("escribe-ves")]);
+    if(it.act==="ordena-letras"){ introFn=()=>speak([I("ordena")]); sayFn=()=>speak([Wd(w.w)]); } else sayFn=()=>speak([I("escribe-ves")]);
   }else if(it.act==="dictado"&&it.phrase){   // dictado de frases: palabras móviles con alguna de sobra
     target=it.phrase.t.replace(/\.$/,"").split(" "); joiner=" ";
     const lowT=target.map(x=>x.toLowerCase());
     extra=shuffle([...new Set(PHRASES.flatMap(p=>p.t.replace(/[.,]/g,"").split(" ")))].filter(x=>x.length>2&&!lowT.includes(x.toLowerCase())&&x[0]===x[0].toLowerCase())).slice(0,2);
     promptHTML=`<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">Escucha y forma la frase</span>`;
-    sayFn=()=>sayItem(it,4);
+    introFn=()=>speak([I("dictado-frase")]); sayFn=()=>sayItem(it,4);
   }else if(it.act==="completa-frase"){        // falta una palabra: se forma con letras
     const ws=it.phrase.t.replace(/\.$/,"").split(" "); const miss=ws[it.idx]; target=[...miss];
     extra=shuffle(enabledLetters(st).filter(l=>!stripAcc(miss.toLowerCase()).includes(l))).slice(0,2);
     const shown=ws.map((x,i)=>i===it.idx?`<span class="gap gap-long">?</span>`:txt(st,x)).join(" ");
     promptHTML=`${pic(it.phrase.k,it.phrase.e)}<span class="phrase" style="font-family:${fcss}">${shown}</span><button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button>`;
-    sayFn=()=>sayItem(it,4);
+    introFn=()=>speak([I("completa-frase")]); sayFn=()=>sayItem(it,4);
   }else{ // dictado con letras móviles
     const txt=it.key; target=[...txt]; const w=it.word;
     const pool=enabledLetters(st).filter(l=>!txt.includes(l)&&!stripAcc(txt).includes(l));
     extra=shuffle(pool.length>=2?pool:LETTERS.filter(l=>!stripAcc(txt).includes(l))).slice(0,2);
     promptHTML=`${w&&st.helps.picto?pic(w.w,w.e):""}<button class="speak" data-say aria-label="Escuchar">${ICON.speaker}</button><span class="ask">Escucha y escribe</span>`;
-    sayFn=()=>say(txt,(w?"palabra:":"silaba:")+txt);
+    introFn=()=>speak([I("escribe-oyes")]); sayFn=()=>say(txt,(w?"palabra:":"silaba:")+txt);
   }
   const tiles=shuffle([...target.map((t,i)=>({t,i})),...extra.map((t,j)=>({t,i:-1-j}))]);
   const slots=target.map(()=>null); let tries=0, locked=false; const t0=performance.now();
@@ -716,7 +720,7 @@ function actBuild(it,ctx){
     ${okBar()}
   </div>`);
   bindBack(backToArea);
-  app.querySelector("[data-say]").onclick=sayFn; setTimeout(sayFn,350);
+  app.querySelector("[data-say]").onclick=sayFn; setTimeout(introFn||sayFn,350);
   const sEl=app.querySelector("[data-slots]"), tEl=app.querySelector("[data-tiles]");
   function paint(){
     sEl.innerHTML=slots.map((s,i)=>`<button class="slot ${s?"full":""}" data-si="${i}" aria-label="${s?esc(s.t):"Hueco "+(i+1)}">${s?txt(st,s.t):""}</button>`).join(joiner?"":"");
@@ -1112,12 +1116,13 @@ function screenAlphabet(){
 function traceLetter(l){
   const st=student(); const en=enabledLetters(st);
   const w=wordOf(LETTER_WORD[l]);
-  traceScreen({text:l,title:`La letra ${show(st,l)}`,word:w,speak:()=>say(`La ${LV(l)}, de ${w.w}`,"letra:"+l),
+  traceScreen({text:l,title:`La letra ${show(st,l)}`,word:w,intro:()=>speak([I("repasa-letra")]),speak:()=>say(`${LV(l)}, de ${w.w}`,"letra:"+l),
     lvl:1,act:"trazo",autoDemo:true,onBack:screenAlphabet,nextLabel:"Siguiente letra",
     onDone:()=>{ const i=en.indexOf(l); traceLetter(en[(i+1)%en.length]); }});
 }
+const KIND={1:"letra",2:"silaba",3:"palabra",4:"frase"};
 const cleanPhrase=t=>t.replace(/[.,¿?¡!]/g,"").trim();
-const sayItem=(it,lvl)=>it.phrase?say(it.phrase.t,"frase:"+it.phrase.t):lvl===1?say(`La ${LV(it.key)}`,"letra:"+it.key):lvl===2?say(it.key,"silaba:"+it.key):say(it.key,"palabra:"+it.key);
+const sayItem=(it,lvl)=>it.phrase?say(it.phrase.t,"frase:"+it.phrase.t):lvl===1?say(LV(it.key),"letra:"+it.key):lvl===2?say(it.key,"silaba:"+it.key):say(it.key,"palabra:"+it.key);
 // Tarjeta lateral con el modelo grande (sin dibujo): letras, sílabas y frases
 const modelCard=(st,text,ph)=>`<div class="side-card word-card big-model">${ph?pic(ph.k,ph.e):""}<div class="word model-${text.length>8?"long":"short"}" style="font-family:${fontOf(st).css}">${txt(st,text)}</div></div>`;
 const earCard=()=>`<div class="side-card word-card ear-card"><span class="ear-big">${ICON.ear}</span><div class="muted">Escucha y escribe</div></div>`;
@@ -1125,9 +1130,9 @@ function actTrace(it,ctx){
   const isWord=ctx.lvl===3;
   if(it.phrase){
     return traceScreen({text:cleanPhrase(it.phrase.t),item:it.phrase.t,title:actName("escritura",ctx.lvl,"trazo"),lvl:ctx.lvl,act:"trazo",progress:[ctx.idx,ctx.n],
-      side:`<div class="side-card word-card">${pic(it.phrase.k,it.phrase.e)}</div>`,speak:()=>sayItem(it,4),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)}); }
+      side:`<div class="side-card word-card">${pic(it.phrase.k,it.phrase.e)}</div>`,intro:()=>speak([I("repasa-frase")]),speak:()=>sayItem(it,4),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)}); }
   traceScreen({text:it.key,title:actName("escritura",ctx.lvl,"trazo"),word:it.word||null,lvl:ctx.lvl,act:"trazo",progress:[ctx.idx,ctx.n],
-    speak:()=>say(it.key,(isWord?"palabra:":"silaba:")+it.key),
+    intro:()=>speak([I(isWord?"repasa-palabra":"repasa-silaba")]),speak:()=>say(it.key,(isWord?"palabra:":"silaba:")+it.key),
     onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
 }
 // Copia (letra, sílaba, palabra o frase): se ve escrita y se escribe en la pauta sin modelo punteado
@@ -1135,20 +1140,20 @@ function actCopy(it,ctx){
   const st=student(); const lvl=ctx.lvl; const text=it.phrase?cleanPhrase(it.phrase.t):it.key;
   traceScreen({text,item:it.phrase?it.phrase.t:it.key,title:actName("escritura",lvl,"copia"),word:lvl===3?it.word:null,lvl,act:"copia",progress:[ctx.idx,ctx.n],
     blank:true,bigModel:true,side:lvl===3?undefined:modelCard(st,it.phrase?it.phrase.t:it.key,it.phrase),
-    speak:()=>{ speak([I("copia")]); setTimeout(()=>sayItem(it,lvl),1600); },onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
+    intro:()=>speak([I("copia-"+(it.phrase?"frase":KIND[lvl]))]),speak:()=>sayItem(it,lvl),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
 }
 // Escribe lo que oyes: a mano y sin verlo
 function actDictHand(it,ctx){
   const lvl=ctx.lvl;
   traceScreen({text:it.key,title:actName("escritura",lvl,"dictado-mano"),lvl,act:"dictado-mano",progress:[ctx.idx,ctx.n],
-    blank:true,side:earCard(),speak:()=>sayItem(it,lvl),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
+    blank:true,side:earCard(),intro:()=>speak([I("escribe-oyes")]),speak:()=>sayItem(it,lvl),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
 }
 // ¿Con qué letra empieza?: se ve el dibujo y se escribe la primera letra
 function actFirstLetter(it,ctx){
   const w=it.word;
   traceScreen({text:w.w[0],item:w.w,title:actName("escritura",1,"empieza-letra"),lvl:1,act:"empieza-letra",progress:[ctx.idx,ctx.n],
     blank:true,side:`<div class="side-card word-card">${pic(w.w,w.e)}</div>`,
-    speak:()=>speak([Wd(w.w),I("empieza-letra")]),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
+    intro:()=>speak([I("empieza-letra")]),speak:()=>speak([Wd(w.w)]),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
 }
 // Preescritura: caminos para repasar
 function actPre(it,ctx){
@@ -1165,7 +1170,7 @@ function actComplete(it,ctx){
   else { miss=w[it.idx]; pre=w.slice(0,it.idx); post=w.slice(it.idx+1); }
   const gap=`<span class="gap-word">${pre?txt(st,pre):""}<span class="gap">?</span>${post?txt(st,post):""}</span>`;
   traceScreen({text:miss,item:w,title:actName("escritura",ctx.lvl,"completa"),word:it.word,lvl:ctx.lvl,act:"completa",progress:[ctx.idx,ctx.n],
-    blank:true,wordHTML:gap,speak:()=>speak([Wd(w),I(ctx.lvl===2?"completa-silaba":"completa")]),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
+    blank:true,wordHTML:gap,intro:()=>speak([I(ctx.lvl===2?"completa-silaba":"completa")]),speak:()=>speak([Wd(w)]),onBack:backToArea,onDone:firstTry=>ctx.done(firstTry)});
 }
 function traceScreen(o){
   const st=student(); applyLook();
@@ -1218,7 +1223,7 @@ function traceScreen(o){
   const dm=app.querySelector("[data-demo]"); if(dm) dm.onclick=()=>eng.demo();
   let first=true;
   const ro=new ResizeObserver(()=>{ const r=board.getBoundingClientRect(); if(r.width<10||r.height<10) return; eng.resize(r.width,r.height);
-    if(first){ first=false; setTimeout(()=>{ o.speak(); if(ordered&&o.autoDemo) setTimeout(()=>{ if(!touched) eng.demo(); },900); },300); } });
+    if(first){ first=false; setTimeout(()=>{ (o.intro||o.speak)(); if(ordered&&o.autoDemo) setTimeout(()=>{ if(!touched) eng.demo(); },900); },300); } });
   function cleanup(){ ro.disconnect(); eng.destroy(); }
   const _back=app.querySelector("[data-back]"); if(_back) _back.addEventListener("click",flushPending,true);
   document.fonts.load(`100px ${font.css}`).then(()=>ro.observe(board));
@@ -1868,7 +1873,7 @@ function phraseForm(f){
 function tabAudios(body){
   const cats={
     enunciados:{label:"Enunciados",items:Object.entries(INSTR).map(([k,v])=>({k:"ins:"+k,txt:v,tts:v.replace(/…/g,"").trim(),hint:v.includes("…")?"Graba solo este trozo: la palabra o sílaba la pone la app":""}))},
-    letras:{label:"Letras",items:LETTERS.map(l=>({k:"letra:"+l,txt:l,tts:`¿Dónde está la ${LV(l)}?`,hint:`Ej.: «${LETTER_NAMES[l]}» o «¿dónde está la ${LETTER_NAMES[l]}?»`}))},
+    letras:{label:"Letras",items:LETTERS.map(l=>({k:"letra:"+l,txt:l,tts:LV(l),hint:`Di solo el nombre, sin «la»: «${LETTER_NAMES[l]}»`}))},
     silabas:{label:"Sílabas",items:SYLLABLES.map(x=>({k:"silaba:"+x,txt:x,tts:sylVoice(x)}))},
     palabras:{label:"Palabras",items:WORDS.map(w=>({k:"palabra:"+w.w,txt:w.w,tts:w.w}))},
     frases:{label:"Frases",items:PHRASES.map(p=>({k:"frase:"+p.t,txt:p.t,tts:p.t}))},
