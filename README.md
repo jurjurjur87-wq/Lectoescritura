@@ -65,6 +65,14 @@ En todos los juegos, tocar una opción solo la marca (si es un dibujo, además l
 - **Bloqueo del aula**: clase fija en el equipo; cambiar de clase y el modo proyección piden PIN.
 - **Copias de seguridad** en archivo (con o sin audios), con recordatorio cada 14 días.
 
+**Turnos en la pizarra**: al terminar una actividad sale «¿Quién sigue?» con los compañeros de la clase (los que ya han salido aparecen marcados). Se toca al siguiente, o «Al azar» entre los que aún no han salido, y entra directo en la misma actividad. «Finalizar» vuelve a «¿Quién eres?». Se puede desactivar en Ajustes → Pizarra digital.
+
+**Vuelta automática**: si nadie toca la pantalla durante unos minutos (5 por defecto; ajustable o «Nunca»), la aplicación vuelve a «¿Quién eres?».
+
+**Toques sin querer**: si hay otro dedo o la palma apoyados, los toques no cuentan; al trazar solo dibuja un dedo y se ignoran los contactos muy grandes (palma, manga); los toques dobles muy seguidos en el mismo sitio cuentan como uno.
+
+**Abrir directamente en la pizarra (Guadalinex)**: en Ajustes → Pizarra digital → «Descargar acceso directo». Se guarda el archivo `lectoescritura.desktop` en el Escritorio, se le da permiso para lanzar (botón derecho → Permitir lanzar) y abre la aplicación a pantalla completa sin barras del navegador (Chromium o, si no está, Firefox). Para salir: Alt + F4. Para que se abra sola al encender, se copia también en `~/.config/autostart`.
+
 **Portada**: con el aspecto Plus aparece un dibujo del colegio (CEIP Salvador Allende) en la parte de abajo.
 
 **Pizarra baja** (ajuste de cada clase): en pantallas grandes, todo lo que toca el alumnado baja a la mitad inferior para que los más pequeños lleguen sin estirarse; el botón de volver queda arriba, al alcance del docente. Además, cada actividad tiene junto a su nombre un botón para activarla o desactivarla mientras se está en ella; al salir vuelve a lo que diga el ajuste de la clase.

@@ -221,6 +221,8 @@ const PRE = (() => {
 /* =========================================================
    MOTOR DE TRAZADO CON ORDEN Y DIRECCIÓN
    ========================================================= */
+// Palma o manga apoyada en la pizarra: contacto muy grande. Solo dibuja un dedo (o el lápiz), uno cada vez.
+const isPalm = e => e.pointerType === "touch" && (e.width > 50 || e.height > 50);
 function createStrokeEngine(o) {
   // o: {text, guide, ink, demo (canvas), tol:{k}, colors, onProgress(p,msg), onSuccess(acc,errors), say}
   const L = (o.layout || TRAZOS.layout)(o.text);
@@ -315,7 +317,7 @@ function createStrokeEngine(o) {
   function pos(e) { const r = o.ink.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
   let nearEnd = false;
   function down(e) {
-    if (finished || demoing || active !== null) return;
+    if (finished || demoing || active !== null || isPalm(e)) return;
     nearEnd = false;
     active = e.pointerId; try { o.ink.setPointerCapture(e.pointerId); } catch (_) { }
     const p = pos(e), s = strokes[cur];
@@ -510,7 +512,7 @@ function createCoverageEngine(o) {
     } else o.onProgress(frac, "", r.outside > tol.out);
   }
   const pos = e => { const r = o.ink.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-  function down(e) { if (finished || active !== null) return; active = e.pointerId; try { o.ink.setPointerCapture(e.pointerId); } catch (_) { } cur = [pos(e)]; strokes.push(cur); drawInk(); }
+  function down(e) { if (finished || active !== null || isPalm(e)) return; active = e.pointerId; try { o.ink.setPointerCapture(e.pointerId); } catch (_) { } cur = [pos(e)]; strokes.push(cur); drawInk(); }
   function move(e) {
     if (e.pointerId !== active || !cur) return; const p = pos(e), l = cur[cur.length - 1]; if (Math.hypot(p[0] - l[0], p[1] - l[1]) < 2) return; cur.push(p);
     const c = o.ink.getContext("2d"); c.lineCap = "round"; c.lineJoin = "round"; c.strokeStyle = C.ink; c.lineWidth = brush(); c.beginPath(); c.moveTo(l[0], l[1]); c.lineTo(p[0], p[1]); c.stroke();

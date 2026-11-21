@@ -312,9 +312,23 @@ function toggleFullscreen(){
     else document.documentElement.requestFullscreen({navigationUI:"hide"}).catch(()=>toast("Este navegador no permite pantalla completa aquí"));
   }catch(e){}
 }
+// Pizarra: si hay otro dedo (o la palma) apoyado, los toques no cuentan; tampoco los toques dobles muy seguidos en el mismo sitio
+let touchesDown=0, ignoreUntil=0, lastClick={t:0,x:-99,y:-99};
+document.addEventListener("pointerdown",e=>{ if(e.pointerType==="touch"){ touchesDown++; if(!e.isPrimary||touchesDown>1) ignoreUntil=Date.now()+500; } },true);
+["pointerup","pointercancel"].forEach(t=>document.addEventListener(t,e=>{ if(e.pointerType==="touch") touchesDown=Math.max(0,touchesDown-1); },true));
+document.addEventListener("click",e=>{ const now=Date.now();
+  const dbl=now-lastClick.t<350&&Math.abs(e.clientX-lastClick.x)<30&&Math.abs(e.clientY-lastClick.y)<30&&e.target.closest(".opt,.btn,.tile,.piece,.slot,.turn");
+  if(now<ignoreUntil||dbl){ e.stopImmediatePropagation(); e.preventDefault(); return; }
+  lastClick={t:now,x:e.clientX,y:e.clientY}; },true);
 // Pizarra: una pulsación larga equivale al botón derecho; no abrir menús ni arrastrar imágenes (salvo en campos de texto)
 document.addEventListener("contextmenu",e=>{ if(!e.target.closest("input,textarea,select,#report")) e.preventDefault(); });
 document.addEventListener("dragstart",e=>{ if(!e.target.closest("input,textarea")) e.preventDefault(); });
+// Si nadie toca la pantalla durante un rato, vuelve a «¿Quién eres?» para que el siguiente no juegue con el nombre del anterior
+let lastTouch=Date.now();
+["pointerdown","keydown"].forEach(t=>document.addEventListener(t,()=>{ lastTouch=Date.now(); },true));
+setInterval(()=>{ const m=DB&&DB.settings?(DB.settings.idleMin??5):5; if(!m||!S.studentId||S.teacherId) return;
+  if(Date.now()-lastTouch<m*60000) return;
+  lastTouch=Date.now(); try{ speechSynthesis.cancel(); }catch(e){} flushPending(); S.turns=null; screenStudents(); },15000);
 document.addEventListener("fullscreenchange",()=>{ const b=document.querySelector("[data-fs]"); if(b) b.innerHTML=document.fullscreenElement?ICON.shrink:ICON.expand; });
 
 /* Desplegables propios: los nativos sacan de pantalla completa en algunos navegadores */
@@ -584,8 +598,9 @@ function roundEnd(area,good,total,again,title){
   const st=student(); applyLook();
   const stars=good===total?3:good>=total*.6?2:1;
   celebrate(); praise(st.name);
+  const tp=turnsPanel(st);
   h(`${topBar(AREA_TITLE[area]+(title?" · "+esc(title):""),true)}
-  <div class="main center">
+  <div class="main center ${tp?"with-turns":""}">
     <div class="hero">
       <div class="stars">${[0,1,2].map(i=>`<span class="${i<stars?"on":""}">${ICON.star}</span>`).join("")}</div>
       <h2>¡Muy bien, ${esc(st.name)}!</h2><p>${good} de ${total} a la primera</p></div>
@@ -593,10 +608,35 @@ function roundEnd(area,good,total,again,title){
       <button class="btn primary big-btn" data-again>${ICON.again} Otra vez</button>
       <button class="btn big-btn" data-home>${ICON.home} Actividades</button>
     </div>
+    ${tp}
   </div>`);
   bindBack(backToArea);
   app.querySelector("[data-again]").onclick=again;
   app.querySelector("[data-home]").onclick=backToArea;
+  bindTurns(st,again);
+}
+/* Turnos en la pizarra: al acabar un alumno se elige quién sigue (o al azar entre los que aún no han salido)
+   y entra directamente en la misma actividad. «Finalizar» cierra los turnos y vuelve a «¿Quién eres?». */
+function turnsPanel(st){
+  if(S.demo||DB.settings.turns===false) return "";
+  const g=byId(DB.groups,S.groupId); if(!g) return "";
+  S.turns=S.turns&&S.turns.g===g.id?S.turns:{g:g.id,done:[]};
+  if(!S.turns.done.includes(st.id)) S.turns.done.push(st.id);
+  const others=DB.students.filter(x=>inGroup(x,g.id)&&x.id!==st.id).sort((a,b)=>a.name.localeCompare(b.name,"es"));
+  if(!others.length) return "";
+  return `<div class="turns">
+    <div class="turn-head"><h3>¿Quién sigue?</h3><button class="btn primary" data-turnrand>🎲 Al azar</button><button class="btn" data-turnend>Finalizar</button></div>
+    <div class="turn-list">${others.map(x=>`<button class="turn ${S.turns.done.includes(x.id)?"done":""}" data-turn="${x.id}"><span class="av">${x.avatar}</span><span class="nm">${esc(x.name)}</span>${S.turns.done.includes(x.id)?`<span class="ok">${ICON.check||"✓"}</span>`:""}</button>`).join("")}</div>
+  </div>`;
+}
+function bindTurns(st,again){
+  const go=id=>{ S.studentId=id; again(); };
+  app.querySelectorAll("[data-turn]").forEach(b=>b.onclick=()=>go(b.dataset.turn));
+  const r=app.querySelector("[data-turnrand]"); if(r) r.onclick=()=>{
+    const g=S.turns.g; const all=DB.students.filter(x=>inGroup(x,g)&&x.id!==st.id);
+    let pool=all.filter(x=>!S.turns.done.includes(x.id)); if(!pool.length){ S.turns.done=[st.id]; pool=all; }
+    const x=pick(pool); toast(`Le toca a ${x.name}`); setTimeout(()=>go(x.id),900); };
+  const f=app.querySelector("[data-turnend]"); if(f) f.onclick=()=>{ S.turns=null; screenStudents(); };
 }
 // Tras dos fallos: se apagan las opciones incorrectas menos una
 function giveHint(btns,isOk){
@@ -2072,6 +2112,20 @@ function tabSettings(body){
     ${opt("lock","1",!!st.lock,"Bloquear la salida","El alumnado no puede cambiar de clase ni cerrar la aplicación (versión de escritorio) sin el PIN de un docente. El modo proyección («Toda la clase») también pide PIN.","checkbox")}
     <label class="form" style="margin-top:.5em"><span class="small-t"><b>Clase fija en este equipo</b> (se abre directamente)</span>
       <select data-fixed class="sel"><option value="">Ninguna: el alumnado elige su clase</option>${gs.map(g=>`<option value="${g.id}" ${st.fixedGroup===g.id?"selected":""}>${esc(g.name)}</option>`).join("")}</select></label></div>
+  <div class="panel"><h3>Pizarra digital</h3>
+    ${opt("turns","1",st.turns!==false,"Turnos al terminar","Al acabar una actividad sale «¿Quién sigue?»: se toca al siguiente (o «Al azar») y entra directo en la misma actividad. «Finalizar» vuelve a «¿Quién eres?».","checkbox")}
+    <label class="form" style="margin-top:.5em"><span class="small-t"><b>Volver a «¿Quién eres?» si nadie toca la pantalla durante…</b></span>
+      <select data-idle class="sel">${[[0,"Nunca"],[2,"2 minutos"],[3,"3 minutos"],[5,"5 minutos"],[10,"10 minutos"]].map(([v,t])=>`<option value="${v}" ${(st.idleMin??5)==v?"selected":""}>${t}</option>`).join("")}</select></label>
+    <p class="muted small-t" style="margin:.3em 0 0">Así el siguiente niño no juega con el nombre del anterior. Si se queda un ejercicio a medias, cuenta como no terminado.</p>
+    <h4 style="margin:1em 0 .3em">Abrir la aplicación directamente en la pizarra (Guadalinex)</h4>
+    <ol class="small-t steps-list">
+      <li>Desde la pizarra, pulsa <b>Descargar acceso directo</b>.</li>
+      <li>Mueve el archivo <b>lectoescritura.desktop</b> de Descargas al <b>Escritorio</b>.</li>
+      <li>Botón derecho sobre él → <b>Permitir lanzar</b> (o Propiedades → Permisos → «Permitir ejecutar»).</li>
+      <li>Al abrirlo, la aplicación ocupa toda la pantalla, sin barras del navegador. Para salir: <b>Alt + F4</b>.</li>
+      <li>Para que se abra sola al encender, copia también el archivo en la carpeta <b>.config/autostart</b> de tu carpeta personal.</li>
+    </ol>
+    <div class="row"><button class="btn small" data-desk>Descargar acceso directo</button></div></div>
   <div class="panel"><h3>Acerca de</h3><p class="muted small-t" style="margin:0">Lectoescritura · Licencia CC BY-NC-ND 4.0. Fuentes Andika y Playwrite España (SIL OFL). Los datos se guardan solo en este equipo.</p></div>`;
   const rerender=()=>{ teacherPanel(); };  // conserva la posición
   body.querySelectorAll("input[name=look]").forEach(r=>r.onchange=()=>{st.look=r.value; save(); rerender(); toast("Guardado");});
@@ -2084,6 +2138,14 @@ function tabSettings(body){
   body.querySelectorAll("input[name=pic]").forEach(r=>r.onchange=()=>{st.pictos=r.value; save(); rerender(); toast("Guardado");});
   body.querySelector("input[name=lock]").onchange=e=>{st.lock=e.target.checked; save(); rerender(); toast("Guardado");};
   body.querySelector("[data-fixed]").onchange=e=>{st.fixedGroup=e.target.value||null; save(); toast("Guardado");};
+  body.querySelector("input[name=turns]").onchange=e=>{st.turns=e.target.checked; save(); rerender(); toast("Guardado");};
+  body.querySelector("[data-idle]").onchange=e=>{st.idleMin=+e.target.value; save(); toast("Guardado");};
+  body.querySelector("[data-desk]").onclick=()=>{ const url=location.href.split("#")[0].replace(/index\.html$/,"");
+    const q=u=>u.replace(/'/g,"");
+    const u=q(url).replace(/["\\`$ ]/g,"");
+    const exec=`sh -c "chromium-browser --kiosk --no-first-run ${u} || chromium --kiosk --no-first-run ${u} || google-chrome --kiosk --no-first-run ${u} || firefox --kiosk ${u}"`;
+    const txt=`[Desktop Entry]\nType=Application\nVersion=1.0\nName=Lectoescritura\nComment=Lectoescritura en pantalla completa\nExec=${exec}\nIcon=applications-education\nTerminal=false\nCategories=Education;\n`;
+    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([txt],{type:"application/x-desktop"})); a.download="lectoescritura.desktop"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); toast("Acceso directo descargado"); };
   body.querySelector("[data-test]").onclick=()=>{ celebrate(); praise(); };
   const det=body.querySelector("[data-pdet]"); if(det) det.ontoggle=()=>{S.openPictos=det.open;};
   body.querySelectorAll("[data-choose]").forEach(b=>b.onclick=()=>chooseArasaac(b.dataset.choose,rerender));
