@@ -271,19 +271,28 @@ function celebrate(){
   }
   document.body.appendChild(c); setTimeout(()=>c.remove(),2400);
 }
+// Pizarra baja: ajuste de la clase, que cada actividad puede cambiar con su propio botón (se recuerda por clase y actividad)
+function lowOn(g){ if(!g) return false; const ov=S.curAct&&g.lowAct?g.lowAct[S.curAct]:undefined; return ov!=null?!!ov:!!g.low; }
+function lowBtn(){ const g=S.groupId&&byId(DB.groups,S.groupId); if(!g||!S.curAct||!inStudent()) return "";
+  const on=lowOn(g); return `<button class="iconbtn lowbtn ${on?"on":""}" data-lowbtn aria-pressed="${on}" aria-label="Pizarra baja en esta actividad" title="Pizarra baja en esta actividad">${ICON.lower}</button>`; }
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-lowbtn]"); if(!b) return;
+  const g=byId(DB.groups,S.groupId); if(!g||!S.curAct) return;
+  const on=!lowOn(g); g.lowAct=g.lowAct||{}; g.lowAct[S.curAct]=on; save(); applyLook();
+  b.classList.toggle("on",on); b.setAttribute("aria-pressed",on);
+  toast(on?"Pizarra baja activada en esta actividad":"Pizarra baja desactivada en esta actividad"); });
 function applyLook(){
   const st=inStudent()?student():null;
   document.body.classList.toggle("grande", !!(st && st.helps && st.helps.grande));
   document.body.classList.toggle("sensible", !!sensible());
   document.body.classList.toggle("plus", plus());
   const g=S.groupId&&DB.groups.find(x=>x.id===S.groupId);
-  document.body.classList.toggle("low", !!(g && g.low));   // «Pizarra baja»: lo que toca el alumno, en la mitad inferior
+  document.body.classList.toggle("low", lowOn(g));   // «Pizarra baja»: lo que toca el alumno, en la mitad inferior
 }
 function topBar(title,back,right=""){
   const st=inStudent()?student():null;
   return `<div class="top">
     ${back?`<button class="iconbtn" data-back aria-label="Volver">${ICON.back}</button>`:""}
-    <h1>${title}</h1>
+    <h1>${title}${lowBtn()}</h1>
     ${st?`<div class="who"><span class="av">${st.avatar}</span><span class="nm">${esc(st.name)}</span></div>`:""}
     ${right}
   </div>`;
@@ -367,6 +376,7 @@ function homeHero(){
   </div>`;
 }
 function screenGroups(force){
+  S.curAct=null;
   flushPending(); S.screenSeq=(S.screenSeq||0)+1;
   S.studentId=null; S.demo=false;
   const fixed=DB.settings.lock && byId(DB.groups,DB.settings.fixedGroup);
@@ -395,6 +405,7 @@ function screenGroups(force){
   app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{S.groupId=b.dataset.g; screenStudents();});
 }
 function screenStudents(){
+  S.curAct=null;
   flushPending(); S.screenSeq=(S.screenSeq||0)+1;
   const g=byId(DB.groups,S.groupId); if(!g) return screenGroups(true);
   S.studentId=null; S.demo=false; applyLook();
@@ -415,6 +426,7 @@ function screenStudents(){
   app.querySelector("[data-demo]").onclick=()=>pinGate("Proyectar para toda la clase: PIN de docente",()=>{S.demo=true; S.demoLevels=null; screenStudentHome();});
 }
 function screenStudentHome(){
+  S.curAct=null;
   flushPending(); S.screenSeq=(S.screenSeq||0)+1;
   const st=student(); applyLook();
   const cnt=a=>`${CATALOG[a].length} actividades`;
@@ -446,6 +458,7 @@ function screenStudentHome(){
 /* ---------- Catálogo de actividades de un área ---------- */
 const AREA_TITLE={escucha:"Escuchar",lectura:"Leer",escritura:"Escribir"};
 function screenArea(area){
+  S.curAct=null;
   flushPending(); S.screenSeq=(S.screenSeq||0)+1; S.area=area;
   const st=student(); applyLook();
   const my=lvlOf(st,area);
@@ -464,7 +477,7 @@ function screenArea(area){
 }
 function startActivity(area,e){
   if(!DB.settings.tried){ DB.settings.tried=true; save(); }
-  const st=student(); S.area=area;
+  const st=student(); S.area=area; S.curAct=area+":"+e.lvl+":"+e.act;
   if(area==="escritura"&&e.lvl===1&&e.act==="trazo") return screenAlphabet();
   runRound(area,e.lvl,buildItems(area,e.lvl,st,roundLen(st),e.act),()=>startActivity(area,e),e.name);
 }

@@ -67,7 +67,7 @@ En todos los juegos, tocar una opción solo la marca (si es un dibujo, además l
 
 **Portada**: con el aspecto Plus aparece un dibujo del colegio (CEIP Salvador Allende) en la parte de abajo.
 
-**Pizarra baja** (ajuste de cada clase): en pantallas grandes, todo lo que toca el alumnado baja a la mitad inferior para que los más pequeños lleguen sin estirarse; el botón de volver queda arriba, al alcance del docente.
+**Pizarra baja** (ajuste de cada clase): en pantallas grandes, todo lo que toca el alumnado baja a la mitad inferior para que los más pequeños lleguen sin estirarse; el botón de volver queda arriba, al alcance del docente. Además, cada actividad tiene junto a su nombre un botón para activarla o desactivarla solo en esa actividad (se recuerda por clase).
 
 **Privacidad**: cada docente (también la administración) solo ve el progreso de las clases en las que figura como docente. Quién se añade o se quita como docente de una clase queda anotado y lo ven todos los docentes de esa clase. La administración gestiona clases, alumnado, docentes y copias, pero no ve el progreso de clases en las que no da clase.
 

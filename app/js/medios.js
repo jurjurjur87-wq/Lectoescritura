@@ -172,6 +172,7 @@ const ICON = (() => {
     star: '<svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z"/></svg>',
     expand: p('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'),
     shrink: p('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>'),
+    lower: p('<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M12 6.5v6M9 10l3 3 3-3M7.5 16.5h9"/>'),
     chevron: p('<path d="M6 9l6 6 6-6"/>'),
     ear: p('<path d="M7 9a5 5 0 0 1 10 0c0 3-2.5 4-3.5 5.5S12.5 19 10 19a3 3 0 0 1-3-3"/><path d="M10 9.5a2 2 0 0 1 4 0c0 1.2-1 1.6-1.5 2.3"/>'),
     clap: '<svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.5 21.5c-2.6-1.2-4.4-4.3-3.8-7.6l1-5.2a1.3 1.3 0 0 1 2.6.5L6.9 12l5.3-6.6a1.3 1.3 0 0 1 2 1.6l-3 3.8 4-5a1.3 1.3 0 0 1 2 1.6l-4 5 3-3.7a1.3 1.3 0 0 1 2 1.6l-3 3.7 1.9-2.3a1.3 1.3 0 0 1 2 1.6l-4 5c-2.1 2.6-5.3 3.9-7.6 2.7z"/><path d="M15 2.5l.6 1.8M18.5 3.5l-1 1.6M20.5 6.5l-1.8.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>',
