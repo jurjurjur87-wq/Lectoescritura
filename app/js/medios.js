@@ -57,13 +57,18 @@ const AUDIO = {
       await new Promise(res => { a.onended = res; a.onerror = res; a.onpause = res; a.play().catch(res); setTimeout(res, 8000); }); return true; } catch (e) { return false; }
   },
   async save(k, blob) { await IDB.put("audios", k, blob); this.keys.add(k); if (this.urls[k]) { URL.revokeObjectURL(this.urls[k]); delete this.urls[k]; } },
+  async totalSize() { let n = 0; for (const k of this.keys) { try { const b = await IDB.get("audios", k); if (b) n += b.size || 0; } catch (e) { } } return n; },
   async remove(k) { await IDB.del("audios", k); this.keys.delete(k); if (this.urls[k]) { URL.revokeObjectURL(this.urls[k]); delete this.urls[k]; } },
   // Grabación (máx. 6 s)
   rec: null,
   async start(onStop) {
     if (!navigator.mediaDevices || !window.MediaRecorder) throw new Error("Este navegador no permite grabar audio");
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mr = new MediaRecorder(stream); const chunks = [];
+    // voz en mono y a 32 kbit/s: suficiente para voz hablada y ocupa unas cuatro veces menos
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } }); }
+    catch (e) { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    let mr; try { mr = new MediaRecorder(stream, { audioBitsPerSecond: 32000 }); } catch (e) { mr = new MediaRecorder(stream); }
+    const chunks = [];
     mr.ondataavailable = e => e.data.size && chunks.push(e.data);
     mr.onstop = () => { stream.getTracks().forEach(t => t.stop()); clearTimeout(this._t); this.rec = null; onStop(new Blob(chunks, { type: mr.mimeType || "audio/webm" })); };
     mr.start(); this.rec = mr; this._t = setTimeout(() => this.stop(), 6000);

@@ -1841,23 +1841,25 @@ function phraseForm(f){
 /* ---- Audios ---- */
 function tabAudios(body){
   const cats={
+    enunciados:{label:"Enunciados",items:Object.entries(INSTR).map(([k,v])=>({k:"ins:"+k,txt:v,tts:v.replace(/…/g,"").trim(),hint:v.includes("…")?"Graba solo este trozo: la palabra o sílaba la pone la app":""}))},
     letras:{label:"Letras",items:LETTERS.map(l=>({k:"letra:"+l,txt:l,tts:`¿Dónde está la ${LV(l)}?`,hint:`Ej.: «${LETTER_NAMES[l]}» o «¿dónde está la ${LETTER_NAMES[l]}?»`}))},
     silabas:{label:"Sílabas",items:SYLLABLES.map(x=>({k:"silaba:"+x,txt:x,tts:sylVoice(x)}))},
     palabras:{label:"Palabras",items:WORDS.map(w=>({k:"palabra:"+w.w,txt:w.w,tts:w.w}))},
     frases:{label:"Frases",items:PHRASES.map(p=>({k:"frase:"+p.t,txt:p.t,tts:p.t}))},
-    enunciados:{label:"Enunciados",items:Object.entries(INSTR).map(([k,v])=>({k:"ins:"+k,txt:v,tts:v.replace(/…/g,"").trim(),hint:v.includes("…")?"Graba solo este trozo: la palabra o sílaba la pone la app":""}))},
     animos:{label:"Ánimos y avisos",items:[{k:"animo:1",txt:"Ánimo 1",tts:"¡Muy bien!",hint:"Ej.: «¡Muy bien!»"},{k:"animo:2",txt:"Ánimo 2",tts:"¡Genial!",hint:"Ej.: «¡Genial!»"},{k:"animo:3",txt:"Ánimo 3",tts:"¡Eso es!",hint:"Ej.: «¡Eso es!»"},{k:"aviso:otra",txt:"Prueba otra vez",tts:"Prueba otra vez"}]}
   };
-  S.aCat=S.aCat||"letras"; const cat=cats[S.aCat];
+  S.aCat=S.aCat||"enunciados"; const cat=cats[S.aCat];
   const n=Object.values(cats).reduce((a,c)=>a+c.items.filter(i=>AUDIO.has(i.k)).length,0);
   body.innerHTML=`<div class="panel"><h3>Audios grabados</h3>
-    <p class="muted" style="margin-top:0">Graba tu voz para que el alumnado la escuche en lugar de la voz del equipo. Pulsa grabar, habla, y pulsa parar (máximo 6 segundos). Llevas ${n} audios grabados.</p>
+    <p class="muted" style="margin-top:0">Graba tu voz para que el alumnado la escuche en lugar de la voz del equipo. Pulsa grabar, habla, y pulsa parar (máximo 6 segundos). ${n===1?"Llevas 1 audio grabado":`Llevas ${n} audios grabados`}<span data-asize></span>.</p>
+    <p class="muted small-t" style="margin-top:0">No hace falta grabarlo todo: lo que más se nota son los <b>enunciados</b>, las <b>letras</b> y las <b>sílabas</b>. Lo que no grabes lo dice la voz del equipo.</p>
     <div class="row">${Object.entries(cats).map(([k,c])=>`<button class="btn small ${k===S.aCat?"primary":""}" data-cat="${k}">${c.label} <span class="chip">${c.items.filter(i=>AUDIO.has(i.k)).length}/${c.items.length}</span></button>`).join("")}</div></div>
   <div class="panel"><div class="tw"><table class="audio-t"><tbody>${cat.items.map((it,i)=>`<tr data-r="${i}">
     <td><b style="font-size:1.1em">${esc(it.txt)}</b>${it.hint?`<div class="muted small-t">${esc(it.hint)}</div>`:""}</td>
     <td>${AUDIO.has(it.k)?`<span class="chip">Tu voz</span>`:`<span class="muted small-t">Voz del equipo</span>`}</td>
     <td class="acts"><button class="btn small" data-play aria-label="Escuchar">${ICON.play}</button><button class="btn small rec" data-rec>${ICON.mic} Grabar</button>${AUDIO.has(it.k)?`<button class="btn small" data-del>${ICON.trash}</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
   body.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{S.aCat=b.dataset.cat;teacherPanel();});
+  if(n) AUDIO.totalSize().then(sz=>{ const e=body.querySelector("[data-asize]"); if(e) e.textContent=` (ocupan ${sz<1048576?Math.max(1,Math.round(sz/1024))+" KB":(sz/1048576).toFixed(1).replace(".",",")+" MB"})`; });
   body.querySelectorAll("tr[data-r]").forEach(tr=>{
     const it=cat.items[+tr.dataset.r];
     tr.querySelector("[data-play]").onclick=()=>AUDIO.has(it.k)?AUDIO.play(it.k):tts(it.tts);
