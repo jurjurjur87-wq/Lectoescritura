@@ -241,7 +241,7 @@ function createStrokeEngine(o) {
       const samples = resample(pts, 2.5 * u);
       return { pts, samples };
     });
-    window.__se = { strokes, get cur() { return cur; } };
+    window.__se = { strokes, get cur() { return cur; }, get k() { return k; } };
   }
   function resample(pts, step) {
     if (pts.length === 1) return [pts[0]];
@@ -313,8 +313,10 @@ function createStrokeEngine(o) {
     o.onProgress && o.onProgress(frac, msg);
   }
   function pos(e) { const r = o.ink.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  let nearEnd = false;
   function down(e) {
     if (finished || demoing || active !== null) return;
+    nearEnd = false;
     active = e.pointerId; try { o.ink.setPointerCapture(e.pointerId); } catch (_) { }
     const p = pos(e), s = strokes[cur];
     if (s.samples.length === 1) {                                     // punto (de la i, de la j)
@@ -346,13 +348,18 @@ function createStrokeEngine(o) {
       return;
     }
     devSum += Math.min(1, m / R()); devN++;
+    if (k > n * .7 && dist(p, s.samples[n - 1]) < R() * .7) nearEnd = true;
     drawInk(); progress("");
   }
   function up(e) {
     if (e.pointerId !== active) return; active = null;
     if (ignoring) { ignoring = false; drawInk(); return; }
     const s = strokes[cur]; if (!s) return;
-    if (k >= s.samples.length * .9) { doneInk.push(ink); ink = []; strokeDone(); }
+    // Hay que llegar al final del trazo (incluido el cabo de salida): antes bastaba con el 90 % del recorrido,
+    // y en palabras largas de letra escolar ese 10 % que faltaba era justo la salida. Ahora el dedo tiene que
+    // haber pasado cerca del punto final (a menos de medio grosor de camino).
+    const reached = nearEnd && k >= s.samples.length * .85;
+    if (reached) { doneInk.push(ink); ink = []; strokeDone(); }
     else { errors++; ink = []; drawInk(); progress("Sigue la flecha hasta el final"); o.say && o.say("Sigue hasta el final"); }
   }
   function strokeDone() {
