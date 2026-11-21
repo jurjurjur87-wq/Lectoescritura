@@ -137,7 +137,7 @@ function tts(text){
   try{
     if(!("speechSynthesis" in window)) return;
     speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(text); u.lang="es-ES"; if(VOICE) u.voice=VOICE;
+    const u=new SpeechSynthesisUtterance(voiceText(text)); u.lang="es-ES"; if(VOICE) u.voice=VOICE;
     const st=inStudent()?student():null;
     u.rate = st && st.helps && st.helps.lenta ? .65 : .9;
     // En algunos Android se pierde lo que se pide justo tras cancelar: pequeña espera
@@ -180,6 +180,25 @@ function sylVoice(x){
 }
 // palabras sueltas que coinciden con palabras inglesas
 const WORD_VOICE={pie:"pié",pan:"pán"};
+/* SOLO PARA LA VOZ (nunca se muestra en pantalla): se marca con tilde la sílaba que ya es tónica en cada palabra
+   («cóme», «sále», «pié»). En español no cambia la pronunciación, pero impide que la voz lea palabras como «come»,
+   «sale», «be» o «to» en inglés. Las palabras átonas cortas (el, la, de, en…) se dejan igual para que suene natural. */
+const UNSTRESSED=new Set(["el","la","los","las","lo","un","una","unos","unas","de","del","a","al","en","con","por","para","y","o","u","e","que","se","le","les","nos","os","su","sus","mi","mis","tu","tus","ni","sin"]);
+const ACCV={a:"á",e:"é",i:"í",o:"ó",u:"ú",A:"Á",E:"É",I:"Í",O:"Ó",U:"Ú"};
+function stressWord(w){
+  const low=w.toLowerCase();
+  if(/[áéíóú]/i.test(w)||UNSTRESSED.has(low)||!/[aeiou]/i.test(w)) return w;
+  const syl=silabear(low); if(!syl.length) return w;
+  const last=low[low.length-1];
+  const si=syl.length===1?0:(/[aeiouns]/.test(last)?syl.length-2:syl.length-1);
+  let pos=syl.slice(0,si).join("").length; const sy=syl[si];
+  let j=-1; for(let k=sy.length-1;k>=0;k--) if("aeo".includes(sy[k])){ j=k; break; }
+  if(j<0) for(let k=sy.length-1;k>=0;k--) if("iu".includes(sy[k])){ j=k; break; }
+  if(j<0) return w;
+  pos+=j; return w.slice(0,pos)+(ACCV[w[pos]]||w[pos])+w.slice(pos+1);
+}
+const VOICE_TESTS=["La letra de hoy es la be, de bota.","¿Dónde está la a? ¿Y la i? ¿Y la te?","¿Qué palabra empieza por to?","El oso come miel.","Sale el sol.","Me lavo las manos.","Te doy un regalo.","Me duele el pie.","El pan está caliente.","Son las diez.","Tres palabras empiezan igual."];
+const voiceText=t=>String(t).replace(/[A-Za-zÁÉÍÓÚáéíóúÑñÜü]+/g,stressWord);
 // Nombres de letras para la voz: «be», «de», «te», «a», «i»… se leen a veces en inglés («bi», «ti», «ei») aunque vayan
 // dentro de una frase. Con tilde (bé, dé, té, á, í) la voz los dice en español. En pantalla no cambia nada.
 const LV=l=>{ const n=LETTER_NAMES[l]||l; return /^[^aeiouáéíóú]*[aeiou][^aeiouáéíóú]*$/.test(n)?sylVoice(n):n; };
@@ -187,7 +206,7 @@ const Sy=x=>({k:"silaba:"+x,t:sylVoice(x)});
 function ttsWait(text){
   return new Promise(res=>{ let done=false; const fin=()=>{ if(!done){done=true;res();} };
     try{ if(!("speechSynthesis" in window)) return fin();
-      const u=new SpeechSynthesisUtterance(text); u.lang="es-ES"; if(VOICE) u.voice=VOICE;
+      const u=new SpeechSynthesisUtterance(voiceText(text)); u.lang="es-ES"; if(VOICE) u.voice=VOICE;
       const st=inStudent()?student():null; u.rate=st&&st.helps&&st.helps.lenta?.65:.9;
       u.onend=fin; u.onerror=fin; speechSynthesis.resume(); speechSynthesis.speak(u); }catch(e){ fin(); }
     setTimeout(fin,900+text.length*110); });
@@ -1996,7 +2015,9 @@ function tabSettings(body){
       return vs.length?`<p class="muted" style="margin-top:0">${es_.length?"Elige la voz en español que mejor suene en este equipo.":"⚠️ Este equipo no tiene ninguna voz en español: algunas palabras pueden sonar en inglés. Instala una voz en español en los ajustes del sistema (Texto a voz)."}</p>
         <label class="form"><select data-voice class="sel">${[...es_,...vs.filter(v=>!es_.includes(v))].map(v=>`<option value="${esc(v.voiceURI)}" ${VOICE&&VOICE.voiceURI===v.voiceURI?"selected":""}>${esc(v.name)} (${esc(v.lang)})</option>`).join("")}</select></label>`
         :`<p class="muted" style="margin-top:0">Este navegador no deja ver ni elegir las voces (Brave las oculta por privacidad, por ejemplo), así que usa la voz del sistema. Si alguna palabra suena en inglés, abre la app en Chrome o pon el español como idioma de «Texto a voz» en los ajustes del móvil o la tablet.</p>`; })()}
-    <div class="row"><button class="btn small" data-vtest>${ICON.speaker} Probar la voz</button></div></div>
+    <div class="row"><button class="btn small" data-vtest>${ICON.speaker} Probar la voz</button></div>
+    <details style="margin-top:.6em"><summary class="small-t"><b>Frases para comprobar si alguna palabra suena en inglés</b></summary>
+      <div class="vtests">${VOICE_TESTS.map((t,i)=>`<button class="btn small" data-vt="${i}">${ICON.speaker} ${esc(t)}</button>`).join("")}</div></details></div>
   <div class="panel"><h3>Voz de ánimo</h3>
     ${opt("praise","1",st.praise!==false,"Decir «¡Muy bien!» al acertar","Si lo desactivas, la voz solo lee los enunciados. Puedes grabar tus propios ánimos en la pestaña Audios.","checkbox")}</div>
   <div class="panel"><h3>Dibujos</h3>
@@ -2025,6 +2046,7 @@ function tabSettings(body){
   body.querySelector("[data-fixed]").onchange=e=>{st.fixedGroup=e.target.value||null; save(); toast("Guardado");};
   body.querySelector("[data-test]").onclick=()=>{ celebrate(); praise(); };
   const vsel=body.querySelector("[data-voice]"); if(vsel) vsel.onchange=()=>{ st.voice=vsel.value; save(); pickVoice(); tts(`La letra de hoy es la ${LV("b")}, de bota.`); };
+  body.querySelectorAll("[data-vt]").forEach(b=>b.onclick=()=>tts(VOICE_TESTS[+b.dataset.vt]));
   body.querySelector("[data-vtest]").onclick=()=>tts(`La letra de hoy es la ${LV("b")}, de bota. ¿Qué palabra empieza por ${sylVoice("to")}?`);
   const det=body.querySelector("[data-pdet]"); if(det) det.ontoggle=()=>{S.openPictos=det.open;};
   body.querySelectorAll("[data-choose]").forEach(b=>b.onclick=()=>chooseArasaac(b.dataset.choose,rerender));
