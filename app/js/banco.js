@@ -15,7 +15,7 @@ lla-ma 🦙|pa-vo 🦃|gam-ba 🦐|la-gar-to 🦎|cis-ne 🦢|o-ru-ga 🐛|ma-ri
 man-za-na 🍎|pe-ra 🍐|plá-ta-no 🍌|u-va 🍇|fre-sa 🍓|ce-re-za 🍒|li-món 🍋|na-ran-ja 🍊|pi-ña 🍍|me-lón 🍈
 san-dí-a 🍉|ki-wi 🥝|co-co 🥥|to-ma-te 🍅|za-na-ho-ria 🥕|pa-ta-ta 🥔|ma-íz 🌽|pe-pi-no 🥒|le-chu-ga 🥬|se-ta 🍄
 pan 🍞|que-so 🧀|hue-vo 🥚|le-che 🥛|miel 🍯|he-la-do 🍦|tar-ta 🎂|ga-lle-ta 🍪|ca-ra-me-lo 🍬|piz-za 🍕
-so-pa 🍲|a-rroz 🍚|sal-chi-cha 🌭|ham-bur-gue-sa 🍔|bo-ca-di-llo 🥪|cho-co-la-te 🍫|pa-lo-mi-tas 🍿|pi-ru-li-to 🍭|mag-da-le-na 🧁
+so-pa 🍲|a-rroz 🍚|sal-chi-cha 🌭|ham-bur-gue-sa 🍔|bo-ca-di-llo 🥪|cho-co-la-te 🍫|pa-lo-mi-tas 🍿|pi-ru-le-ta 🍭|mag-da-le-na 🧁
 ca-sa 🏠|ca-ma 🛏️|so-fá 🛋️|puer-ta 🚪|lla-ve 🔑|re-loj ⌚|li-bro 📖|lá-piz ✏️|ti-je-ra ✂️|re-gla 📏
 mo-chi-la 🎒|pe-lo-ta ⚽|glo-bo 🎈|yo-yó 🪀|da-do 🎲|tam-bor 🥁|gui-ta-rra 🎸|pia-no 🎹|trom-pe-ta 🎺|vio-lín 🎻
 cam-pa-na 🔔|ve-la 🕯️|bom-bi-lla 💡|te-lé-fo-no 📱|or-de-na-dor 💻|te-le-vi-sión 📺|ra-dio 📻|cá-ma-ra 📷|pa-ra-guas ☂️|ga-fas 👓

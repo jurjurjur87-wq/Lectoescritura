@@ -2044,7 +2044,7 @@ function tabSettings(body){
     st.ownImages=[...new Set([...(st.ownImages||[]),inp.dataset.pw])]; save(); toast("Dibujo cambiado"); rerender(); });
   body.querySelector("[data-dl]").onclick=async()=>{
     const stEl=body.querySelector("[data-dlst]"); let ok=0, fail=0; const missing=[];
-    const list=pictoList().filter(w=>!(st.ownImages||[]).includes(w)&&!(st.pickedPictos||{})[w]);
+    const list=pictoList().filter(w=>!(st.ownImages||[]).includes(w)&&!(st.pickedPictos||{})[w]&&!PICTO.BUILTIN[w]);
     let i=0, stop=false;
     const worker=async()=>{ while(i<list.length && !stop){ const w=list[i++];
       try{ await PICTO.fetchArasaac(w); ok++; }catch(e){ fail++; missing.push(w); if(fail>=4&&ok===0){ stop=true; } }
@@ -2116,4 +2116,7 @@ if(DESKTOP && DESKTOP.onCloseRequest){
 }
 // Pedir al navegador que no borre los datos aunque falte espacio
 try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persisted().then(p=>{ if(!p) navigator.storage.persist(); }); }catch(e){}
-Promise.all([AUDIO.init(),PICTO.init(),initRecords(),initRecent()]).finally(()=>{ screenGroups(); autoBackup(); });
+Promise.all([AUDIO.init(),PICTO.init(),initRecords(),initRecent()]).finally(()=>{
+  // los pictogramas incluidos en la app mandan, salvo que el docente haya elegido otro o puesto una foto
+  for(const w in PICTO.BUILTIN) if(!(DB.settings.ownImages||[]).includes(w)&&!(DB.settings.pickedPictos||{})[w]) PICTO.urls[w]=PICTO.BUILTIN[w];
+  screenGroups(); autoBackup(); });

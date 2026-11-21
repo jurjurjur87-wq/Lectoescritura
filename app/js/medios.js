@@ -84,7 +84,10 @@ const AUDIO = {
    ========================================================= */
 const PICTO = {
   urls: {},
+  // Pictogramas de ARASAAC incluidos en la app (los que la búsqueda automática no encuentra bien)
+  BUILTIN: { "barra": "pictos/barra.png", "arcoíris": "pictos/arcoiris.png", "tacón": "pictos/tacon.png", "satélite": "pictos/satelite.png", "ponerse": "pictos/ponerse.png" },
   async init() {
+    Object.assign(this.urls, this.BUILTIN);
     try { const all = await IDB.all("pictos"); for (const k in all) this.urls[k] = URL.createObjectURL(all[k]); } catch (e) { }
   },
   has(w) { return !!this.urls[w]; },
