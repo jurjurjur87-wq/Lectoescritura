@@ -593,6 +593,8 @@ function giveHint(btns,isOk){
   setTimeout(()=>speak([I("ayuda")]),900); return true;
 }
 const okBar=(label="Comprobar")=>`<div class="row okbar"><button class="btn ok big-btn" data-ok>${ICON.check} ${label}</button></div>`;
+// Al empezar cada ejercicio solo se dice el nombre de la actividad; el contenido suena al tocar el botón de escuchar
+const announce=title=>{ const n=String(title).split(" · ")[0].replace(/<[^>]+>/g,"").trim(); if(n) speak([{k:"act:"+n,t:n}]); };
 function actHeader(ctx,title){
   return `${topBar(AREA_TITLE[ctx.area]+" · "+esc(title),true)}`;
 }
@@ -609,7 +611,7 @@ function choiceScreen(ctx,{title,prompt,options,correct,fontCss,emo,onSay,sayKey
   bindBack(backToArea);
   let tries=0, locked=false, sel=-1, hinted=false; const t0=performance.now();
   const sb=app.querySelector("[data-say]"); if(sb) sb.onclick=onSay;
-  if(onSay) setTimeout(onSay,350);
+  setTimeout(()=>announce(title),350);
   const btns=[...app.querySelectorAll(".opt")];
   // Tocar elige (y, si es un dibujo, lo dice); la respuesta se da con Comprobar
   btns.forEach(b=>b.onclick=()=>{ if(locked) return; sel=+b.dataset.i; btns.forEach(x=>x.classList.toggle("picked",x===b));
@@ -626,7 +628,6 @@ function choiceScreen(ctx,{title,prompt,options,correct,fontCss,emo,onSay,sayKey
       b.classList.remove("bad","picked"); void b.offsetWidth; b.classList.add("bad"); sel=-1;
       tryAgain();
       if(!hinted && tries>=2 && giveHint(btns,i=>options[i].ok)){ hinted=true; tries++; }   // la ayuda cuenta como un intento
-      else if(onSay) setTimeout(onSay,1100);
     }
   }
 }
@@ -720,7 +721,7 @@ function actBuild(it,ctx){
     ${okBar()}
   </div>`);
   bindBack(backToArea);
-  app.querySelector("[data-say]").onclick=sayFn; setTimeout(introFn||sayFn,350);
+  app.querySelector("[data-say]").onclick=sayFn; setTimeout(introFn||(ctx.area==="escritura"?sayFn:()=>announce(title)),350);
   const sEl=app.querySelector("[data-slots]"), tEl=app.querySelector("[data-tiles]");
   function paint(){
     sEl.innerHTML=slots.map((s,i)=>`<button class="slot ${s?"full":""}" data-si="${i}" aria-label="${s?esc(s.t):"Hueco "+(i+1)}">${s?txt(st,s.t):""}</button>`).join(joiner?"":"");
@@ -777,7 +778,7 @@ function actMatch(it,ctx){
     ${okBar()}
   </div>`);
   bindBack(backToArea);
-  const sayIt=()=>speak([I("une")]); app.querySelector("[data-say]").onclick=sayIt; setTimeout(sayIt,350);
+  const sayIt=()=>speak([I("une")]); app.querySelector("[data-say]").onclick=sayIt; setTimeout(()=>announce(actName(ctx.area,ctx.lvl,it.act)),350);
   const L=app.querySelector("[data-l]"), R=app.querySelector("[data-r]");
   const colorOf=w=>{ const i=[...pairs.keys()].indexOf(w); return i<0?null:COL[i%3]; };
   function paint(){
@@ -973,7 +974,7 @@ function oralChoice(ctx,it,{prompt,onSay,options}){
   </div>`);
   bindBack(backToArea);
   let sel=-1, tries=0, locked=false, hinted=false; const t0=performance.now();
-  app.querySelector("[data-say]").onclick=onSay; setTimeout(onSay,350);
+  app.querySelector("[data-say]").onclick=onSay; setTimeout(()=>announce(actName(ctx.area,ctx.lvl,it.act)),350);
   const btns=[...app.querySelectorAll(".opt.oral")];
   btns.forEach(b=>b.onclick=()=>{ if(locked) return; sel=+b.dataset.i; btns.forEach(x=>x.classList.toggle("sel",x===b)); tts(options[sel].say); });
   app.querySelector("[data-ok]").onclick=()=>{
@@ -1035,7 +1036,7 @@ function actBuildScene(it,ctx){
     ${okBar()}
   </div>`);
   bindBack(backToArea);
-  const sayIt=()=>say(txt,"frase:"+txt); app.querySelector("[data-say]").onclick=sayIt; setTimeout(sayIt,350);
+  const sayIt=()=>say(txt,"frase:"+txt); app.querySelector("[data-say]").onclick=sayIt; setTimeout(()=>announce(actName(ctx.area,ctx.lvl,it.act)),350);
   const sEl=app.querySelector("[data-slots]"), tEl=app.querySelector("[data-tiles]");
   function paint(){
     sEl.innerHTML=slots.map((t,i)=>`<button class="slot pic-slot ${t?"full":""}" data-si="${i}" aria-label="${t?esc(t.k):"Hueco "+(i+1)}">${t?pic(t.k,t.e,"emoji in-slot"):`<span class="slot-n">${i+1}</span>`}</button>`).join("");
@@ -1052,7 +1053,7 @@ function actBuildScene(it,ctx){
     if(ok){ locked=true; sEl.classList.add("ok"); record(ctx.area,ctx.lvl,it.key,tries,tries===1?100:Math.max(0,100-34*(tries-1)),performance.now()-t0,it.act);
       celebrate(); praise(); setTimeout(()=>ctx.done(tries===1),1500); }
     else{ locked=true; sEl.querySelectorAll(".slot").forEach((b,i)=>{ if(slots[i].k!==target[i].k) b.classList.add("bad"); }); tryAgain();
-      setTimeout(()=>{ slots.forEach((s,i)=>{ if(s.k!==target[i].k) slots[i]=null; }); locked=false; paint(); sayIt(); },1200); }
+      setTimeout(()=>{ slots.forEach((s,i)=>{ if(s.k!==target[i].k) slots[i]=null; }); locked=false; paint(); },1200); }
   }
   paint();
 }
@@ -1071,7 +1072,7 @@ function actScissors(it,ctx){
     <div class="row" style="justify-content:center;margin-top:1.2em"><button class="btn ok big-btn" data-ok>${ICON.check} Ya está</button></div>
   </div>`);
   bindBack(backToArea);
-  const sayIt=()=>say(it.phrase.t,"frase:"+it.phrase.t); app.querySelector("[data-say]").onclick=sayIt;
+  const sayIt=()=>say(it.phrase.t,"frase:"+it.phrase.t); app.querySelector("[data-say]").onclick=sayIt; setTimeout(()=>announce(actName(ctx.area,ctx.lvl,it.act)),350);
   const el=app.querySelector("[data-sc]");
   function paint(bad){
     el.innerHTML=letters.map((c,i)=>`${i>0?`<button class="cut ${cuts.has(i)?"on":""} ${bad&&bad.has(i)?"bad":""}" data-c="${i}" aria-label="Cortar aquí"><i></i></button>`:""}<span class="lt">${st.cfg.font==="cursiva"&&/[a-zñáéíóúü]/.test(c)?ESCOLAR.svgWord(c):esc(c)}</span>`).join("");
@@ -1872,7 +1873,8 @@ function phraseForm(f){
 /* ---- Audios ---- */
 function tabAudios(body){
   const cats={
-    enunciados:{label:"Enunciados",items:Object.entries(INSTR).map(([k,v])=>({k:"ins:"+k,txt:v,tts:v.replace(/…/g,"").trim(),hint:v.includes("…")?"Graba solo este trozo: la palabra o sílaba la pone la app":""}))},
+    enunciados:{label:"Enunciados",items:[...[...new Set([...CATALOG.escucha,...CATALOG.lectura].map(e=>e.name))].map(n=>({k:"act:"+n,txt:n,tts:n,hint:"Nombre de la actividad: se dice al empezar cada ejercicio"})),
+      ...Object.entries(INSTR).map(([k,v])=>({k:"ins:"+k,txt:v,tts:v.replace(/…/g,"").trim(),hint:v.includes("…")?"Graba solo este trozo: la palabra o sílaba la pone la app":""}))]},
     letras:{label:"Letras",items:LETTERS.map(l=>({k:"letra:"+l,txt:l,tts:LV(l),hint:`Di solo el nombre, sin «la»: «${LETTER_NAMES[l]}»`}))},
     silabas:{label:"Sílabas",items:SYLLABLES.map(x=>({k:"silaba:"+x,txt:x,tts:sylVoice(x)}))},
     palabras:{label:"Palabras",items:WORDS.map(w=>({k:"palabra:"+w.w,txt:w.w,tts:w.w}))},
