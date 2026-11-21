@@ -297,6 +297,9 @@ function toggleFullscreen(){
     else document.documentElement.requestFullscreen({navigationUI:"hide"}).catch(()=>toast("Este navegador no permite pantalla completa aquí"));
   }catch(e){}
 }
+// Pizarra: una pulsación larga equivale al botón derecho; no abrir menús ni arrastrar imágenes (salvo en campos de texto)
+document.addEventListener("contextmenu",e=>{ if(!e.target.closest("input,textarea,select,#report")) e.preventDefault(); });
+document.addEventListener("dragstart",e=>{ if(!e.target.closest("input,textarea")) e.preventDefault(); });
 document.addEventListener("fullscreenchange",()=>{ const b=document.querySelector("[data-fs]"); if(b) b.innerHTML=document.fullscreenElement?ICON.shrink:ICON.expand; });
 
 /* Desplegables propios: los nativos sacan de pantalla completa en algunos navegadores */
@@ -369,7 +372,7 @@ function screenGroups(force){
   <div class="main home">
     ${homeHero()}
     <h2 class="home-q">¿Cuál es tu clase?</h2>
-    ${groups.length?`<div class="grid">${groups.map(g=>`
+    ${groups.length?`<div class="grid screen-grid">${groups.map(g=>`
       <button class="tile group-tile" data-g="${g.id}" style="--gc:${g.color}">
         <span class="big deco">${g.icon||"🏫"}</span><span>${esc(g.name)}</span>
         <small>${DB.students.filter(s=>inGroup(s,g.id)).length} alumnos</small>
@@ -393,7 +396,7 @@ function screenStudents(){
   h(`${topBar(esc(g.name),!locked,locked?`<button class="iconbtn" data-teacher aria-label="Docentes">${ICON.lock}</button>`:"")}
   <div class="main">
     <div class="hero"><h2>¿Quién eres?</h2></div>
-    <div class="grid">
+    <div class="grid screen-grid">
       ${sts.map(s=>`<button class="tile" data-s="${s.id}"><span class="big">${s.avatar}</span>${esc(s.name)}</button>`).join("")}
       <button class="tile demo-tile" data-demo><span class="big">👩‍🏫</span>Toda la clase<small>Proyectar · no guarda progreso</small></button>
     </div>
@@ -1875,7 +1878,7 @@ function tabAudios(body){
   <div class="panel"><div class="tw"><table class="audio-t"><tbody>${cat.items.map((it,i)=>`<tr data-r="${i}">
     <td><b style="font-size:1.1em">${esc(it.txt)}</b>${it.hint?`<div class="muted small-t">${esc(it.hint)}</div>`:""}</td>
     <td>${AUDIO.has(it.k)?`<span class="chip">Tu voz</span>`:`<span class="muted small-t">Voz del equipo</span>`}</td>
-    <td class="acts"><button class="btn small" data-play aria-label="Escuchar">${ICON.play}</button><button class="btn small rec" data-rec>${ICON.mic} Grabar</button>${AUDIO.has(it.k)?`<button class="btn small" data-del>${ICON.trash}</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
+    <td class="a-acts"><button class="btn small" data-play aria-label="Escuchar">${ICON.play}</button><button class="btn small rec" data-rec>${ICON.mic} Grabar</button>${AUDIO.has(it.k)?`<button class="btn small" data-del>${ICON.trash}</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
   body.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{S.aCat=b.dataset.cat;teacherPanel();});
   if(n) AUDIO.totalSize().then(sz=>{ const e=body.querySelector("[data-asize]"); if(e) e.textContent=` (ocupan ${sz<1048576?Math.max(1,Math.round(sz/1024))+" KB":(sz/1048576).toFixed(1).replace(".",",")+" MB"})`; });
   body.querySelectorAll("tr[data-r]").forEach(tr=>{
