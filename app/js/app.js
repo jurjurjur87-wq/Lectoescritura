@@ -197,7 +197,6 @@ function stressWord(w){
   if(j<0) return w;
   pos+=j; return w.slice(0,pos)+(ACCV[w[pos]]||w[pos])+w.slice(pos+1);
 }
-const VOICE_TESTS=["La letra de hoy es la be, de bota.","¿Dónde está la a? ¿Y la i? ¿Y la te?","¿Qué palabra empieza por to?","El oso come miel.","Sale el sol.","Me lavo las manos.","Te doy un regalo.","Me duele el pie.","El pan está caliente.","Son las diez.","Tres palabras empiezan igual."];
 const voiceText=t=>String(t).replace(/[A-Za-zÁÉÍÓÚáéíóúÑñÜü]+/g,stressWord);
 // Nombres de letras para la voz: «be», «de», «te», «a», «i»… se leen a veces en inglés («bi», «ti», «ei») aunque vayan
 // dentro de una frase. Con tilde (bé, dé, té, á, í) la voz los dice en español. En pantalla no cambia nada.
@@ -2010,14 +2009,6 @@ function tabSettings(body){
     ${opt("cel","check",cur==="check","Solo una marca ✓","Aparece un ✓ verde y desaparece.")}
     ${opt("cel","nada",cur==="nada","Sin animaciones","Solo cambia de color la respuesta o el trazo.")}
     <div class="row" style="margin-top:.4em"><button class="btn small" data-test>${ICON.eye} Probar</button></div></div>
-  <div class="panel"><h3>Voz de lectura</h3>
-    ${(()=>{ const vs=("speechSynthesis" in window)?speechSynthesis.getVoices():[]; const es_=vs.filter(v=>/^es/i.test(v.lang));
-      return vs.length?`<p class="muted" style="margin-top:0">${es_.length?"Elige la voz en español que mejor suene en este equipo.":"⚠️ Este equipo no tiene ninguna voz en español: algunas palabras pueden sonar en inglés. Instala una voz en español en los ajustes del sistema (Texto a voz)."}</p>
-        <label class="form"><select data-voice class="sel">${[...es_,...vs.filter(v=>!es_.includes(v))].map(v=>`<option value="${esc(v.voiceURI)}" ${VOICE&&VOICE.voiceURI===v.voiceURI?"selected":""}>${esc(v.name)} (${esc(v.lang)})</option>`).join("")}</select></label>`
-        :`<p class="muted" style="margin-top:0">Este navegador no deja ver ni elegir las voces (Brave las oculta por privacidad, por ejemplo), así que usa la voz del sistema. Si alguna palabra suena en inglés, abre la app en Chrome o pon el español como idioma de «Texto a voz» en los ajustes del móvil o la tablet.</p>`; })()}
-    <div class="row"><button class="btn small" data-vtest>${ICON.speaker} Probar la voz</button></div>
-    <details style="margin-top:.6em"><summary class="small-t"><b>Frases para comprobar si alguna palabra suena en inglés</b></summary>
-      <div class="vtests">${VOICE_TESTS.map((t,i)=>`<button class="btn small" data-vt="${i}">${ICON.speaker} ${esc(t)}</button>`).join("")}</div></details></div>
   <div class="panel"><h3>Voz de ánimo</h3>
     ${opt("praise","1",st.praise!==false,"Decir «¡Muy bien!» al acertar","Si lo desactivas, la voz solo lee los enunciados. Puedes grabar tus propios ánimos en la pestaña Audios.","checkbox")}</div>
   <div class="panel"><h3>Dibujos</h3>
@@ -2045,9 +2036,6 @@ function tabSettings(body){
   body.querySelector("input[name=lock]").onchange=e=>{st.lock=e.target.checked; save(); rerender(); toast("Guardado");};
   body.querySelector("[data-fixed]").onchange=e=>{st.fixedGroup=e.target.value||null; save(); toast("Guardado");};
   body.querySelector("[data-test]").onclick=()=>{ celebrate(); praise(); };
-  const vsel=body.querySelector("[data-voice]"); if(vsel) vsel.onchange=()=>{ st.voice=vsel.value; save(); pickVoice(); tts(`La letra de hoy es la ${LV("b")}, de bota.`); };
-  body.querySelectorAll("[data-vt]").forEach(b=>b.onclick=()=>tts(VOICE_TESTS[+b.dataset.vt]));
-  body.querySelector("[data-vtest]").onclick=()=>tts(`La letra de hoy es la ${LV("b")}, de bota. ¿Qué palabra empieza por ${sylVoice("to")}?`);
   const det=body.querySelector("[data-pdet]"); if(det) det.ontoggle=()=>{S.openPictos=det.open;};
   body.querySelectorAll("[data-choose]").forEach(b=>b.onclick=()=>chooseArasaac(b.dataset.choose,rerender));
   body.querySelectorAll("[data-pw]").forEach(inp=>inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; await PICTO.set(inp.dataset.pw,f);
